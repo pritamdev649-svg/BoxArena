@@ -1,0 +1,25 @@
+# Secrets — never commit. See env/README.md.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+serviceAccount*.json
+google-services.json
+GoogleService-Info.plist
+*.jks
+*.keystore
+
+# Dependencies / build output
+node_modules/
+dist/
+.next/
+out/
+build/
+coverage/
+
+# Local
+.DS_Store
+*.log
+.vscode/
+.idea/

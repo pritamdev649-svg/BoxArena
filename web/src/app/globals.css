@@ -1,0 +1,275 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   BoxArena — design tokens
+   Source of truth: docs/design_system.md §2-4
+
+   Two themes. Semantic names ("base", "ink", "line") rather than literal ones
+   ("black", "white") so a single set of utilities works in both — no
+   `dark:` variant on every element.
+   ========================================================================== */
+
+@theme inline {
+  /* Surfaces.
+     NOTE: this is `canvas`, not `base`. A `--color-base` token generates a
+     `text-base` COLOUR utility that silently overrides Tailwind's built-in
+     `text-base` FONT-SIZE — which painted body text in the page background
+     colour. Never name a colour token after a Tailwind size scale. */
+  --color-canvas: var(--bg-base);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-inset: var(--bg-inset);
+
+  /* Borders */
+  --color-line-subtle: var(--border-subtle);
+  --color-line: var(--border-default);
+  --color-line-strong: var(--border-strong);
+
+  /* Text */
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-inverse: var(--text-inverse);
+
+  /* Volt: the brand accent. `volt` is the FILL (buttons, bars); `volt-ink` is
+     the readable text variant, which must differ per theme — high-chroma volt
+     on white is unreadable (§2, rule 4). */
+  --color-volt: var(--accent-fill);
+  --color-volt-ink: var(--accent-text);
+  --color-volt-hover: var(--accent-hover);
+
+  /* Semantic */
+  --color-win: var(--state-win);
+  --color-loss: var(--state-loss);
+  --color-dispute: var(--state-dispute);
+  --color-info: var(--state-info);
+  --color-gold: var(--state-gold);
+
+  /* Sport accents */
+  --color-cricket: var(--sport-cricket);
+  --color-football: var(--sport-football);
+  --color-badminton: var(--sport-badminton);
+
+  /* Type */
+  --font-display: var(--font-archivo), 'Archivo', system-ui, sans-serif;
+  --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
+
+  --text-display-xl: 3.5rem;
+  --text-display-xl--line-height: 1;
+  --text-display-xl--letter-spacing: -0.02em;
+  --text-display-lg: 2.5rem;
+  --text-display-lg--line-height: 1.05;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-md: 1.75rem;
+  --text-display-md--line-height: 1.15;
+  --text-display-md--letter-spacing: -0.01em;
+  --text-score-hero: 4rem;
+  --text-score-hero--line-height: 1;
+  --text-score-card: 2rem;
+  --text-score-card--line-height: 1;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.5;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1.2;
+  --text-label--letter-spacing: 0.08em;
+
+  /* Radius: nothing fully rounded except avatars (§4). */
+  --radius-chip: 4px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-sheet: 16px;
+}
+
+/* ==========================================================================
+   LIGHT — the default. Editorial and high-contrast, not grey-on-grey.
+   Never pure #FFF for the page: a hair of warmth stops it glaring.
+   ========================================================================== */
+
+:root {
+  --bg-base: #f7f8f9;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-inset: #eef0f3;
+
+  --border-subtle: #e4e8ec;
+  --border-default: #d3d9e0;
+  --border-strong: #b3bcc7;
+
+  --text-primary: #0a0e13;
+  --text-secondary: #4d5a68;
+  --text-muted: #78889a;
+  --text-inverse: #0a0e13;
+
+  /* Volt stays the fill so the brand reads the same, but text switches to a
+     deep olive that clears 4.5:1 on white. High-chroma volt as text is
+     effectively invisible on a light background. */
+  --accent-fill: #c2f53c;
+  --accent-text: #4a6b00;
+  --accent-hover: #d4ff57;
+
+  --state-win: #0f8a4a;
+  --state-loss: #c62839;
+  --state-dispute: #a8620a;
+  --state-info: #1668c4;
+  --state-gold: #9a6b00;
+
+  --sport-cricket: #c25100;
+  --sport-football: #1668c4;
+  --sport-badminton: #4a6b00;
+
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   DARK — "floodlit night". The original direction (§1).
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg-base: #0a0e13;
+    --bg-surface: #121821;
+    --bg-elevated: #1b232e;
+    --bg-inset: #070a0e;
+
+    --border-subtle: #1e2733;
+    --border-default: #2a3644;
+    --border-strong: #3b4a5c;
+
+    --text-primary: #f2f5f8;
+    --text-secondary: #9aa8b8;
+    --text-muted: #64748b;
+    --text-inverse: #0a0e13;
+
+    --accent-fill: #c2f53c;
+    --accent-text: #c2f53c;
+    --accent-hover: #d4ff57;
+
+    --state-win: #34d77f;
+    --state-loss: #f0556b;
+    --state-dispute: #ffa524;
+    --state-info: #4da6ff;
+    --state-gold: #ffc245;
+
+    --sport-cricket: #ff8a3d;
+    --sport-football: #4da6ff;
+    --sport-badminton: #c2f53c;
+
+    color-scheme: dark;
+  }
+}
+
+/* The toggle stamps data-theme on <html>; it must win in BOTH directions. */
+:root[data-theme='dark'] {
+  --bg-base: #0a0e13;
+  --bg-surface: #121821;
+  --bg-elevated: #1b232e;
+  --bg-inset: #070a0e;
+
+  --border-subtle: #1e2733;
+  --border-default: #2a3644;
+  --border-strong: #3b4a5c;
+
+  --text-primary: #f2f5f8;
+  --text-secondary: #9aa8b8;
+  --text-muted: #64748b;
+  --text-inverse: #0a0e13;
+
+  --accent-fill: #c2f53c;
+  --accent-text: #c2f53c;
+  --accent-hover: #d4ff57;
+
+  --state-win: #34d77f;
+  --state-loss: #f0556b;
+  --state-dispute: #ffa524;
+  --state-info: #4da6ff;
+  --state-gold: #ffc245;
+
+  --sport-cricket: #ff8a3d;
+  --sport-football: #4da6ff;
+  --sport-badminton: #c2f53c;
+
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   Base layer
+   ========================================================================== */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Nobody notices; everybody feels it (§8.5). */
+  ::selection {
+    background-color: color-mix(in oklab, var(--accent-fill) 45%, transparent);
+    color: var(--text-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  * {
+    scrollbar-color: var(--border-strong) transparent;
+  }
+}
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
+@utility tabular {
+  /* MANDATORY on every score, price, timer and table column (§3). */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+@utility label-caps {
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: var(--text-label--letter-spacing);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Blocked slots — carries meaning without relying on colour alone (§2, rule 3). */
+@utility hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    var(--border-default) 4px,
+    var(--border-default) 5px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

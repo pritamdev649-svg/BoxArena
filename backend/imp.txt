@@ -1,0 +1,19 @@
+How it works now
+Sign in at /partner/login or /admin/login with a seeded number — the dev code appears on screen and is prefilled, so it's one click:
+
+Account	Number	Entrance
+Venue owner	9810000001	/partner/login
+Ops admin	9999999999	/admin/login
+Verified against the running backend: otp/request returns devCode: "123456", and otp/verify returns an arena_owner token that passes the partner role gate.
+
+
+
+
+
+Deepak Rastogi (Rastogi Sports Complex):
+Phone Number: 9830000001 (input on screen) / +919830000001
+Dev OTP: 123456
+Farhan Ahmed (Ahmed Turf Park):
+Phone Number: 9830000002 (input on screen) / +919830000002
+Dev OTP: 123456
+18:46
