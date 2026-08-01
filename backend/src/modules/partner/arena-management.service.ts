@@ -92,6 +92,33 @@ export interface ArenaSettingsPatch {
   depositPercent?: number;
   description?: string;
   contactPhone?: string;
+  images?: string[];
+}
+
+/**
+ * Venue photos must come from our own signed uploads.
+ *
+ * The gallery renders on a public page under our domain, so an arbitrary URL
+ * here is an owner-controlled asset served with our name on it — and one that
+ * silently breaks (or changes) whenever the remote host feels like it. The
+ * signed upload flow already restricts what can land in Cloudinary; this keeps
+ * the stored URL pointing there.
+ */
+function assertOwnUploads(images: string[]): void {
+  const offender = images.find((url) => {
+    try {
+      const { protocol, hostname } = new URL(url);
+      return protocol !== 'https:' || !/(^|\.)cloudinary\.com$/.test(hostname);
+    } catch {
+      return true;
+    }
+  });
+
+  if (offender !== undefined) {
+    throw new BadRequestError(
+      'Venue photos must be uploaded through BoxArena. Upload the image, then save.',
+    );
+  }
 }
 
 /** Slots that would fall outside the proposed weekly template. */
@@ -109,6 +136,8 @@ export async function updateArenaSettings(input: {
 }): Promise<IArena> {
   assertOwner(input.user);
   const arena = await resolveArena(input.user, input.arenaPublicId);
+
+  if (input.patch.images) assertOwnUploads(input.patch.images);
 
   if (input.patch.operatingHours && input.patch.operatingHours.length > 0) {
     await applyHoursChange(arena, input.patch.operatingHours);

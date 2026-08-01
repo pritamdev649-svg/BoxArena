@@ -49,6 +49,23 @@ arenaRoutes.get('/nearby', validate({ query: nearbyQuery }), async (req, res, ne
   }
 });
 
+const topQuery = z
+  .object({
+    sport: z.nativeEnum(SportType).optional(),
+    limit: z.coerce.number().int().min(1).max(12).optional(),
+  })
+  .strict();
+
+/** MUST stay above `/:slug`, or "top" is read as a venue slug. */
+arenaRoutes.get('/top', validate({ query: topQuery }), async (req, res, next) => {
+  try {
+    const query = validatedQuery<{ sport?: SportType; limit?: number }>(req);
+    ok(res, await service.listTopArenas({ sport: query.sport, limit: query.limit }));
+  } catch (err) {
+    next(err);
+  }
+});
+
 arenaRoutes.get('/:slug', async (req, res, next) => {
   try {
     ok(res, await service.getArenaBySlug(String(req.params.slug)));
@@ -112,6 +129,18 @@ arenaRoutes.get('/:publicId/reviews', validate({ query: reviewsQuery }), async (
       arenaPublicId: String(req.params.publicId),
       ...(q.limit === undefined ? {} : { limit: q.limit }),
       ...(q.after === undefined ? {} : { after: q.after }),
+    }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Answers "can I review this venue, and against which booking?" */
+arenaRoutes.get('/:publicId/reviews/eligibility', authenticate, async (req, res, next) => {
+  try {
+    ok(res, await service.getReviewEligibility({
+      user: currentUser(req),
+      arenaPublicId: String(req.params.publicId),
     }));
   } catch (err) {
     next(err);

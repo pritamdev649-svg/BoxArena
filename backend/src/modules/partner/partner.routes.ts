@@ -37,6 +37,8 @@ const arenaSettingsSchema = z
     depositPercent: z.number().int().min(0).max(100).optional(),
     description: z.string().max(2000).optional(),
     contactPhone: z.string().max(20).optional(),
+    /** Venue photos. The service checks the host — see assertOwnUploads. */
+    images: z.array(z.string().url()).max(12).optional(),
   })
   .strict();
 

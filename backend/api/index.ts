@@ -4,8 +4,7 @@ import mongoose from 'mongoose';
 
 const app = createApp();
 
-// Serverless DB middleware: awaits connection inside the request lifecycle so CPU is not frozen
-app.use(async (req, res, next) => {
+app.use(async (_req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
     try {
       await connectDatabase();

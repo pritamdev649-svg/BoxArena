@@ -274,6 +274,52 @@ export async function getArenaReviews(input: {
   };
 }
 
+/**
+ * Whether the signed-in player may review this venue, and on which booking.
+ *
+ * The rules (played here, finished, not already reviewed) live in
+ * createArenaReview. Re-deriving them in the client would mean two copies that
+ * disagree the first time either changes — so the UI asks instead of guessing,
+ * and gets back the booking to submit against.
+ */
+export async function getReviewEligibility(input: {
+  user: IUser;
+  arenaPublicId: string;
+}): Promise<{ canReview: boolean; bookingPublicId: string | null }> {
+  const arena = await ArenaModel.findOne({ publicId: input.arenaPublicId, isActive: true })
+    .select('_id')
+    .lean();
+  if (!arena) throw new NotFoundError('Arena');
+
+  const played = await BookingModel.find({
+    arenaId: arena._id,
+    bookerId: input.user._id,
+    status: { $in: [BookingStatus.COMPLETED, BookingStatus.CONFIRMED] },
+    startAt: { $lt: new Date() },
+  })
+    .select('_id publicId')
+    .sort({ startAt: -1 })
+    .limit(20)
+    .lean();
+
+  if (played.length === 0) return { canReview: false, bookingPublicId: null };
+
+  const reviewed = await ReviewModel.find({
+    userId: input.user._id,
+    bookingId: { $in: played.map((booking) => booking._id) },
+  })
+    .select('bookingId')
+    .lean();
+
+  const reviewedIds = new Set(reviewed.map((review) => String(review.bookingId)));
+  const unreviewed = played.find((booking) => !reviewedIds.has(String(booking._id)));
+
+  return {
+    canReview: unreviewed !== undefined,
+    bookingPublicId: unreviewed?.publicId ?? null,
+  };
+}
+
 export async function createArenaReview(input: {
   user: IUser;
   arenaPublicId: string;
