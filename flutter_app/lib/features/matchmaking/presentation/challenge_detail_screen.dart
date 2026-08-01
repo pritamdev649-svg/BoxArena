@@ -210,10 +210,8 @@ class ChallengeDetailScreen extends ConsumerWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.volt500,
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: const StadiumBorder(),
                 ),
                 child: const Text(
                   'CLOSE PROFILE',

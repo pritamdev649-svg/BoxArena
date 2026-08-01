@@ -37,3 +37,4 @@ main().catch((err: unknown) => {
   logger.error({ err }, 'Failed to start server');
   process.exit(1);
 });
+// Trigger reload after env update and Firebase connection

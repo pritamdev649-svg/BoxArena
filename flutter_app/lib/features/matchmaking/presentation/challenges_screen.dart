@@ -160,8 +160,8 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.volt500,
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: const StadiumBorder(),
                 ),
                 child: const Text('CLOSE PROFILE', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
@@ -406,8 +406,15 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                           padding: const EdgeInsets.all(16.0),
                           decoration: BoxDecoration(
                             color: AppColors.bgSurface,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: AppColors.borderSubtle),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -420,12 +427,25 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                                   children: [
                                     Row(
                                       children: [
-                                        CircleAvatar(
-                                          radius: 20,
-                                          backgroundColor: isCricket ? AppColors.sportCricket : AppColors.info,
-                                          child: Text(
-                                            challenge.creatorCaptainName.substring(0, 1).toUpperCase(),
-                                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: (isCricket ? AppColors.sportCricket : AppColors.volt500).withOpacity(0.3),
+                                              width: 1.5,
+                                            ),
+                                          ),
+                                          child: CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: isCricket ? AppColors.sportCricket.withOpacity(0.1) : AppColors.voltGlow,
+                                            child: Text(
+                                              challenge.creatorCaptainName.substring(0, 1).toUpperCase(),
+                                              style: TextStyle(
+                                                color: isCricket ? AppColors.sportCricket : AppColors.volt500,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 12),
@@ -436,7 +456,9 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                                               children: [
                                                 Text(
                                                   challenge.creatorTeamName,
-                                                  style: AppTheme.displayStyle(fontSize: 14),
+                                                  style: AppTheme.displayStyle(fontSize: 14).copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                 ),
                                                 const SizedBox(width: 4),
                                                 const Icon(Icons.verified_rounded, color: AppColors.info, size: 14),
@@ -455,9 +477,11 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                                   decoration: BoxDecoration(
-                                                    color: AppColors.bgInset,
+                                                    color: challenge.skillLevel == 'advanced'
+                                                        ? AppColors.loss.withOpacity(0.1)
+                                                        : (challenge.skillLevel == 'intermediate' ? AppColors.dispute.withOpacity(0.1) : AppColors.win.withOpacity(0.1)),
                                                     borderRadius: BorderRadius.circular(4),
                                                   ),
                                                   child: Text(
@@ -480,15 +504,17 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: AppColors.bgInset,
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: AppColors.borderSubtle),
+                                        color: isCricket ? AppColors.sportCricket.withOpacity(0.1) : AppColors.voltGlow,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: (isCricket ? AppColors.sportCricket : AppColors.volt500).withOpacity(0.3),
+                                        ),
                                       ),
                                       child: Text(
                                         challenge.sport.toUpperCase(),
                                         style: TextStyle(
-                                          color: isCricket ? AppColors.sportCricket : AppColors.info,
-                                          fontSize: 10,
+                                          color: isCricket ? AppColors.sportCricket : AppColors.volt500,
+                                          fontSize: 9,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -502,7 +528,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                                 children: [
                                   Icon(Icons.location_on_rounded, color: AppColors.textMuted, size: 16),
                                   const SizedBox(width: 6),
-                                  Text(challenge.arenaName, style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                                  Expanded(child: Text(challenge.arenaName, style: TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w500))),
                                 ],
                               ),
                               const SizedBox(height: 6),
@@ -510,7 +536,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                                 children: [
                                   Icon(Icons.access_time_filled_rounded, color: AppColors.textMuted, size: 16),
                                   const SizedBox(width: 6),
-                                  Text(challenge.time, style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                                  Text(challenge.time, style: TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
                                 ],
                               ),
                               const SizedBox(height: 16),

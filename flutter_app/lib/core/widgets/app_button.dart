@@ -34,14 +34,14 @@ class AppButton extends StatelessWidget {
             backgroundColor: themeColor,
             foregroundColor: displayTextColor,
             elevation: 0,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 20),
+            shape: const StadiumBorder(),
           )
         : OutlinedButton.styleFrom(
             foregroundColor: displayTextColor,
             side: BorderSide(color: themeColor),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 20),
+            shape: const StadiumBorder(),
           );
 
     final Widget childContent = isLoading

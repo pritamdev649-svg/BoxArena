@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { ChallengeModel, ChallengeStatus, SportType, ArenaModel, TeamModel, BookingModel, CourtModel } from '../../models/index.js';
+import { ChallengeModel, ChallengeStatus, SportType, ArenaModel, TeamModel, BookingModel, CourtModel, MatchFormat, TeamMemberRole, BookingStatus, BookingSource, UserModel } from '../../models/index.js';
 import { authenticate, currentUser } from '../../shared/middlewares/auth.js';
 import { validate, validatedQuery } from '../../shared/middlewares/validate.js';
 import { created, ok } from '../../shared/utils/response.js';
@@ -54,29 +54,46 @@ challengeRoutes.post('/', validate({ body: createSchema }), async (req, res, nex
 
       if (!teamId) {
         let team = await TeamModel.findOne({ captainId: user._id, sport: sportType });
+        let backendFormat: MatchFormat = MatchFormat.DOUBLES;
+        if (sportType === SportType.FOOTBALL || sportType === SportType.CRICKET) {
+          backendFormat = MatchFormat.TEAM;
+        } else if (format) {
+          const fLower = format.toLowerCase();
+          if (fLower.includes('singles') || fLower.includes('1v1')) {
+            backendFormat = MatchFormat.SINGLES;
+          } else if (fLower.includes('6v6') || fLower.includes('8v8') || fLower.includes('11v11')) {
+            backendFormat = MatchFormat.TEAM;
+          }
+        }
+
         if (!team) {
-          let backendFormat = 'doubles';
-          if (format) {
-            const fLower = format.toLowerCase();
-            if (fLower.includes('singles') || fLower.includes('1v1')) {
-              backendFormat = 'singles';
-            } else if (fLower.includes('6v6')) {
-              backendFormat = '6v6';
-            } else if (fLower.includes('8v8')) {
-              backendFormat = '8v8';
-            } else if (fLower.includes('11v11')) {
-              backendFormat = '11v11';
+          const teamName = `${user.fullName}'s Team`;
+          const teamSlug = teamName.toLowerCase().trim().replace(/[^a-z0-9]+/gu, '-').replace(/(^-|-$)/gu, '');
+          
+          let membersList = [{ userId: user._id, role: TeamMemberRole.CAPTAIN, isActive: true, joinedAt: new Date() }];
+          if (backendFormat === MatchFormat.DOUBLES) {
+            const secondUser = await UserModel.findOne({ _id: { $ne: user._id } });
+            if (secondUser) {
+              membersList.push({ userId: secondUser._id as Types.ObjectId, role: TeamMemberRole.MEMBER, isActive: true, joinedAt: new Date() });
             }
           }
+
           team = await TeamModel.create({
             publicId: publicId('tem'),
-            name: `${user.fullName}'s Team`,
+            name: teamName,
+            slug: teamSlug,
             sport: sportType,
             format: backendFormat,
             captainId: user._id,
-            members: [{ userId: user._id, role: 'captain', isActive: true }],
+            members: membersList,
             stats: { played: 0, won: 0, lost: 0, eloRating: 1200 },
           });
+        } else if (backendFormat === MatchFormat.DOUBLES && team.members.filter(m => m.isActive).length < 2) {
+          const secondUser = await UserModel.findOne({ _id: { $ne: user._id } });
+          if (secondUser) {
+            team.members.push({ userId: secondUser._id as Types.ObjectId, role: TeamMemberRole.MEMBER, isActive: true, joinedAt: new Date() });
+            await team.save();
+          }
         }
         teamId = String(team._id);
       }
@@ -93,10 +110,10 @@ challengeRoutes.post('/', validate({ body: createSchema }), async (req, res, nex
         let court = await CourtModel.findOne({ arenaId: arena._id });
         if (!court) {
           court = await CourtModel.create({
-            publicId: publicId('crt'),
             arenaId: arena._id,
             name: 'Court A',
-            sportsSupported: [sportType],
+            sport: sportType,
+            basePricePerHourPaise: 40000,
             isActive: true,
           });
         }
@@ -146,8 +163,8 @@ challengeRoutes.post('/', validate({ body: createSchema }), async (req, res, nex
           endAt: new Date(startAtDate.getTime() + 3600_000),
           subtotalPaise: 0,
           totalPaise: 0,
-          status: 'confirmed',
-          source: 'mobile',
+          status: BookingStatus.CONFIRMED,
+          source: BookingSource.APP,
           isPayAtVenue: true,
           idempotencyKey: `auto-booking:${Date.now()}:${Math.random()}`,
         });

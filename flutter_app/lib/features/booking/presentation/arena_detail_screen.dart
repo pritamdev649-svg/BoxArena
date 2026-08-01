@@ -553,10 +553,8 @@ class _ArenaDetailScreenState extends State<ArenaDetailScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _isSlotsHeld ? AppColors.volt500 : AppColors.dispute,
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                      shape: const StadiumBorder(),
                     ),
                     child: Text(
                       _isSlotsHeld ? 'BOOK NOW' : 'HOLD SLOTS',

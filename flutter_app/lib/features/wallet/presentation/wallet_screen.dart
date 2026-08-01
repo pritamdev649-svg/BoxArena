@@ -177,6 +177,13 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
       final orderId = orderData['orderId'] as String;
       final keyId = orderData['keyId'] as String;
+      final isMock = orderData['isMock'] as bool? ?? false;
+
+      if (isMock) {
+        log('[WalletScreen] Order is mock. Showing mock simulator dialog.');
+        _simulateMockPaymentSuccess(orderId, amountPaise);
+        return;
+      }
 
       final profile = ref.read(profileProvider);
 
@@ -522,10 +529,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.volt500,
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: const StadiumBorder(),
                     ),
                     icon: walletState.isLoading
                         ? const SizedBox(
@@ -550,10 +555,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.volt500,
                       side: BorderSide(color: AppColors.volt500),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: const StadiumBorder(),
                     ),
                     icon: const Icon(Icons.account_balance_rounded),
                     label: Text(

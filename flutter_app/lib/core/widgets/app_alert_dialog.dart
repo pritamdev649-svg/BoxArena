@@ -50,7 +50,7 @@ class AppAlertDialog extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: status == AppAlertStatus.error ? AppColors.loss : AppColors.volt500,
             foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            shape: const StadiumBorder(),
           ),
           child: Text(confirmLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
         ),
