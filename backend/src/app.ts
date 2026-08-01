@@ -4,6 +4,8 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
 import { env } from './shared/config/env.js';
+import { connectDatabase } from './shared/config/db.js';
+import { logger } from './shared/config/logger.js';
 import { errorHandler, notFoundHandler } from './shared/middlewares/error-handler.js';
 import { requestLogger } from './shared/middlewares/request-logger.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
@@ -26,6 +28,21 @@ export function createApp(): Express {
 
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
+
+  app.use(async (req, res, next) => {
+    if (req.path === '/health') {
+      return next();
+    }
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        await connectDatabase();
+      } catch (err) {
+        logger.error({ err }, 'Database connection failed in middleware');
+        return res.status(500).json({ success: false, error: 'Database connection failed' });
+      }
+    }
+    next();
+  });
 
   app.use(helmet());
   app.use(
