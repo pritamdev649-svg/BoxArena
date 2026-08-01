@@ -170,8 +170,25 @@ class ChallengesNotifier extends Notifier<ChallengesState> {
     }
   }
 
-  void createChallenge(MockChallenge challenge) {
-    state = state.copyWith(challenges: [...state.challenges, challenge]);
+  Future<bool> createChallenge(MockChallenge challenge) async {
+    try {
+      final client = ref.read(apiClientProvider);
+      final body = {
+        'entryFeePaise': challenge.entryFeePaise,
+        'sport': challenge.sport,
+        'arenaName': challenge.arenaName,
+        'startAt': "${challenge.date} ${challenge.time}",
+        'format': challenge.teamFormat,
+        'notes': 'Challenge created from mobile app',
+      };
+      log('[ChallengesNotifier] Posting challenge: $body');
+      await client.post(ApiRoutes.challenges, body);
+      await loadChallenges();
+      return true;
+    } catch (e) {
+      log('[ChallengesNotifier] Failed to create challenge: $e');
+      return false;
+    }
   }
 }
 

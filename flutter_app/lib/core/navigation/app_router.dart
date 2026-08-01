@@ -99,19 +99,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/discover',
-            builder: (context, state) => const ArenaListScreen(),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: ArenaListScreen(),
+            ),
           ),
           GoRoute(
             path: '/challenges',
-            builder: (context, state) => const ChallengesScreen(),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: ChallengesScreen(),
+            ),
           ),
           GoRoute(
             path: '/wallet',
-            builder: (context, state) => const WalletScreen(),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: WalletScreen(),
+            ),
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const PlayerProfileScreen(),
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: PlayerProfileScreen(),
+            ),
           ),
         ],
       ),

@@ -100,7 +100,7 @@ class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
     });
   }
 
-  void _publishChallenge() {
+  Future<void> _publishChallenge() async {
     final profile = ref.read(profileProvider);
     if (profile == null) return;
 
@@ -134,9 +134,26 @@ class _CreateChallengeScreenState extends ConsumerState<CreateChallengeScreen> {
       teamFormat: _selectedFormat,
     );
 
-    ref.read(challengesProvider.notifier).createChallenge(newChallenge);
-    AppSnackBar.showSuccess(context, 'Match Challenge Published Successfully!');
-    Navigator.pop(context);
+    // Show loading overlay
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: CircularProgressIndicator(color: AppColors.volt500),
+      ),
+    );
+
+    final success = await ref.read(challengesProvider.notifier).createChallenge(newChallenge);
+
+    if (mounted) {
+      Navigator.pop(context); // Dismiss loading dialog
+      if (success) {
+        AppSnackBar.showSuccess(context, 'Match Challenge Published Successfully!');
+        Navigator.pop(context); // Close create screen
+      } else {
+        AppSnackBar.showError(context, 'Failed to publish challenge. Please check your connection or wallet balance.');
+      }
+    }
   }
 
   @override
