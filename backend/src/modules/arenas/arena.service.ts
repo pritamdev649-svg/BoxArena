@@ -1,4 +1,5 @@
-import { ArenaModel, CourtModel, SlotModel, SlotStatus, SportType, ChallengeModel, ChallengeStatus, BookingModel, ReviewModel, BookingStatus, type IUser } from '../../models/index.js';
+import type { Types } from 'mongoose';
+import { ArenaModel, CourtModel, SlotModel, SlotStatus, SportType, ChallengeModel, ChallengeStatus, BookingModel, ReviewModel, BookingStatus, MatchModel, MatchStatus, type IUser } from '../../models/index.js';
 import { env } from '../../shared/config/env.js';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../../shared/errors/app-error.js';
 
@@ -79,12 +80,107 @@ export async function listArenas(filter: { areaName?: string; sport?: SportType;
   }));
 }
 
+/**
+ * Venue activity, counted from what actually happened here.
+ *
+ * Every number is derived on read rather than kept as a counter on the arena —
+ * a denormalised counter that drifts is worse than no counter, because the
+ * venue page then argues with the bookings list. These are cheap indexed
+ * counts, and the page is the only caller.
+ */
+export interface ArenaStats {
+  /** Only settled results. A scheduled match has not been played yet. */
+  matchesPlayed: number;
+  /** Distinct people who actually turned up, not booking rows. */
+  playersHosted: number;
+  hoursBooked: number;
+  openChallenges: number;
+  courtCount: number;
+}
+
+/** A match that reached a result. Voided and disputed ones did not happen. */
+const SETTLED_MATCH: MatchStatus[] = [
+  MatchStatus.VERIFIED,
+  MatchStatus.ADMIN_RESOLVED,
+  MatchStatus.WALKOVER,
+];
+
+/** Money changed hands and the court was held. Cancellations are excluded. */
+const HONOURED_BOOKING: BookingStatus[] = [BookingStatus.CONFIRMED, BookingStatus.COMPLETED];
+
+export async function getArenaStats(arenaId: Types.ObjectId): Promise<ArenaStats> {
+  const [matchesPlayed, players, hoursBooked, openChallenges, courtCount] = await Promise.all([
+    MatchModel.countDocuments({ arenaId, status: { $in: SETTLED_MATCH } }),
+    BookingModel.distinct('bookerId', { arenaId, status: { $in: HONOURED_BOOKING } }),
+    BookingModel.countDocuments({ arenaId, status: { $in: HONOURED_BOOKING } }),
+    ChallengeModel.countDocuments({
+      arenaId,
+      status: ChallengeStatus.OPEN,
+      matchExpiresAt: { $gt: new Date() },
+    }),
+    CourtModel.countDocuments({ arenaId, isActive: true }),
+  ]);
+
+  return {
+    matchesPlayed,
+    playersHosted: players.length,
+    hoursBooked,
+    openChallenges,
+    courtCount,
+  };
+}
+
 export async function getArenaBySlug(slug: string) {
   const arena = await ArenaModel.findOne({ slug, isActive: true }).lean();
   if (!arena) throw new NotFoundError('Arena');
 
-  const courts = await CourtModel.find({ arenaId: arena._id, isActive: true }).lean();
-  return { ...arena, courts };
+  const arenaId = arena._id as Types.ObjectId;
+  const [courts, stats, recentReviews] = await Promise.all([
+    CourtModel.find({ arenaId, isActive: true }).lean(),
+    getArenaStats(arenaId),
+    /** A preview, so the page renders reviews without a second round trip. */
+    ReviewModel.find({ arenaId, isHidden: false })
+      .sort({ _id: -1 })
+      .limit(3)
+      .populate('userId', 'fullName avatarUrl')
+      .lean(),
+  ]);
+
+  return { ...arena, courts, stats, recentReviews };
+}
+
+/**
+ * The landing page's "top venues" strip.
+ *
+ * Ordered by rating, but a 5.0 from one review is not better than a 4.6 from
+ * ninety — so unreviewed and barely-reviewed venues sort below rated ones
+ * instead of topping the list on a single friendly review.
+ */
+export async function listTopArenas(input: { limit?: number | undefined; sport?: SportType | undefined }) {
+  const limit = Math.min(input.limit ?? 4, 12);
+
+  const arenas = await ArenaModel.find({
+    isActive: true,
+    isVerified: true,
+    ...(input.sport ? { sportsSupported: input.sport } : {}),
+  })
+    .select('publicId name slug images amenities sportsSupported rating address isVerified')
+    .sort({ 'rating.count': -1, 'rating.average': -1 })
+    .limit(limit)
+    .lean();
+
+  return Promise.all(
+    arenas.map(async (arena) => {
+      const arenaId = arena._id as Types.ObjectId;
+      const [courts, stats] = await Promise.all([
+        CourtModel.find({ arenaId, isActive: true })
+          .select('name sport basePricePerHourPaise')
+          .lean(),
+        getArenaStats(arenaId),
+      ]);
+      return { ...arena, courts, stats };
+    }),
+  );
 }
 
 
@@ -195,6 +291,12 @@ export async function createArenaReview(input: {
     throw new ForbiddenError('This is not your booking');
   }
 
+  /** The booking must be AT this venue — otherwise one completed booking
+      anywhere would buy you a review on every arena in the city. */
+  if (String(booking.arenaId) !== String(arena._id)) {
+    throw new BadRequestError('That booking is not for this venue');
+  }
+
   if (booking.status !== BookingStatus.COMPLETED) {
     const isPastConfirmed = booking.status === BookingStatus.CONFIRMED && new Date(booking.startAt).getTime() < Date.now();
     if (!isPastConfirmed) {
@@ -218,5 +320,32 @@ export async function createArenaReview(input: {
     ...(input.comment !== undefined ? { comment: input.comment } : {}),
   });
 
-  return review;
+  const rating = await recomputeArenaRating(arena._id as Types.ObjectId);
+  return { review, rating };
+}
+
+/**
+ * Recomputes `arena.rating` from the reviews themselves.
+ *
+ * Incrementing a running average is tempting and wrong: hiding a review (ops
+ * does this for abuse) or deleting one would leave the stored average
+ * permanently out of step with the list of reviews shown right beneath it. A
+ * venue has tens of reviews, not millions, so we just average them.
+ */
+export async function recomputeArenaRating(
+  arenaId: Types.ObjectId,
+): Promise<{ average: number; count: number }> {
+  const [summary] = await ReviewModel.aggregate<{ average: number; count: number }>([
+    { $match: { arenaId, isHidden: false } },
+    { $group: { _id: null, average: { $avg: '$rating' }, count: { $sum: 1 } } },
+  ]);
+
+  const rating = {
+    /** One decimal — the UI renders `4.6`, so storing 4.5999… invites drift. */
+    average: summary ? Math.round(summary.average * 10) / 10 : 0,
+    count: summary?.count ?? 0,
+  };
+
+  await ArenaModel.updateOne({ _id: arenaId }, { $set: { rating } });
+  return rating;
 }
