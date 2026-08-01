@@ -39,7 +39,9 @@ export async function connectDatabase(uri: string = env.MONGODB_URI): Promise<vo
     serverSelectionTimeoutMS: 10_000,
   });
 
-  await assertReplicaSet();
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    await assertReplicaSet();
+  }
   logger.info('MongoDB connected');
 }
 
