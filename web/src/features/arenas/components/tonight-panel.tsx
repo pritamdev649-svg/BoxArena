@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { MoneyText } from '@/shared/ui/money-text';
-import { SEED_ARENAS } from '@/mocks/seed/arenas';
+import { apiFetchSafe } from '@/shared/lib/api';
+import { API_ENDPOINTS } from '@/shared/lib/api-endpoints';
 import { t } from '@/shared/i18n';
 
 /**
@@ -13,7 +14,9 @@ import { t } from '@/shared/i18n';
  * stronger choice anyway: it proves the product works above the fold, and it
  * is exactly what a player opening the site at 6pm wants to know.
  *
- * Wired to seed data now; swaps to GET /arenas/nearby at task F2.2.
+ * Reads GET /arenas. When the API is unreachable the panel disappears rather
+ * than falling back to fixtures — a hero advertising three venues that do not
+ * exist is worse than a hero with one column.
  */
 
 const SPORT_ACCENT: Record<string, string> = {
@@ -22,49 +25,47 @@ const SPORT_ACCENT: Record<string, string> = {
   badminton: 'text-badminton',
 };
 
-export function TonightPanel({ className }: { className?: string }) {
-  /** Cheapest three, so the panel leads with an accessible price. */
-  const arenas = SEED_ARENAS.filter((a) => a.isVerified)
-    .map((arena) => {
-      const cheapest = arena.courts.reduce((min, court) =>
+interface PanelArena {
+  publicId: string;
+  slug: string;
+  name: string;
+  isVerified: boolean;
+  address?: { areaName?: string };
+  courts?: { name: string; sport: string; basePricePerHourPaise: number }[];
+}
+
+/** Cheapest three, so the panel leads with an accessible price. */
+function cheapestThree(arenas: PanelArena[]) {
+  return arenas
+    .filter((arena) => arena.isVerified && (arena.courts?.length ?? 0) > 0)
+    .map((arena) => ({
+      arena,
+      cheapest: (arena.courts ?? []).reduce((min, court) =>
         court.basePricePerHourPaise < min.basePricePerHourPaise ? court : min,
-      );
-      return { arena, cheapest };
-    })
+      ),
+    }))
     .sort((a, b) => a.cheapest.basePricePerHourPaise - b.cheapest.basePricePerHourPaise)
     .slice(0, 3);
+}
+
+export async function TonightPanel({ className }: { className?: string }) {
+  const arenas = (await apiFetchSafe<PanelArena[]>(API_ENDPOINTS.arenas)) ?? [];
+  const listed = cheapestThree(arenas);
+
+  if (listed.length === 0) return null;
 
   return (
     <div className={cn('border-line-subtle bg-surface border', className)}>
       <div className="border-line-subtle flex items-baseline justify-between border-b px-4 py-3">
         <h2 className="label-caps text-ink-secondary">{t('home.tonightHeading')}</h2>
         <span className="tabular text-ink-muted text-xs">
-          {t('common.venueCount', { count: SEED_ARENAS.length })}
+          {t('common.venueCount', { count: arenas.length })}
         </span>
       </div>
 
       <ul className="divide-line-subtle divide-y">
-        {arenas.map(({ arena, cheapest }) => (
-          <li key={arena.publicId}>
-            <Link
-              href={`/arenas/${arena.slug}`}
-              className="hover:bg-elevated flex items-center gap-3 px-4 py-3 transition-colors duration-150"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-ink truncate text-sm font-medium">{arena.name}</p>
-                <p className="text-ink-muted truncate text-xs">
-                  {arena.areaName}
-                  <span aria-hidden> · </span>
-                  <span className={SPORT_ACCENT[cheapest.sport]}>{cheapest.sport}</span>
-                </p>
-              </div>
-
-              <div className="shrink-0 text-right">
-                <MoneyText paise={cheapest.basePricePerHourPaise} className="text-sm font-medium" />
-                <p className="text-ink-muted text-xs">{t('common.perHour')}</p>
-              </div>
-            </Link>
-          </li>
+        {listed.map(({ arena, cheapest }) => (
+          <PanelRow key={arena.publicId} arena={arena} cheapest={cheapest} />
         ))}
       </ul>
 
@@ -75,5 +76,36 @@ export function TonightPanel({ className }: { className?: string }) {
         {t('common.seeAll')} <ArrowRight className="size-4" />
       </Link>
     </div>
+  );
+}
+
+function PanelRow({
+  arena,
+  cheapest,
+}: {
+  arena: PanelArena;
+  cheapest: { sport: string; basePricePerHourPaise: number };
+}) {
+  return (
+    <li>
+      <Link
+        href={`/arenas/${arena.slug}`}
+        className="hover:bg-elevated flex items-center gap-3 px-4 py-3 transition-colors duration-150"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-ink truncate text-sm font-medium">{arena.name}</p>
+          <p className="text-ink-muted truncate text-xs">
+            {arena.address?.areaName}
+            <span aria-hidden> · </span>
+            <span className={SPORT_ACCENT[cheapest.sport]}>{cheapest.sport}</span>
+          </p>
+        </div>
+
+        <div className="shrink-0 text-right">
+          <MoneyText paise={cheapest.basePricePerHourPaise} className="text-sm font-medium" />
+          <p className="text-ink-muted text-xs">{t('common.perHour')}</p>
+        </div>
+      </Link>
+    </li>
   );
 }

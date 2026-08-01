@@ -6,7 +6,7 @@ import { LeaderboardRow } from '@/shared/ui/leaderboard-row';
 import { MatchStatusChip } from '@/shared/ui/match-status-chip';
 import { PrizeBadge } from '@/shared/ui/money-text';
 import { HeroCourtBackdrop } from '@/shared/ui/court-graphics';
-import { TonightPanel } from '@/features/arenas';
+import { TonightPanel, TopArenas } from '@/features/arenas';
 import { SEED_PLAYERS } from '@/mocks/seed/players';
 import { t } from '@/shared/i18n';
 
@@ -21,6 +21,7 @@ export default function HomePage() {
   return (
     <main>
       <Hero />
+      <TopArenas />
       <TheLoop />
       <ProofSection />
     </main>

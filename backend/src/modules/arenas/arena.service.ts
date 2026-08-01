@@ -209,16 +209,46 @@ export async function getSlotsForDay(input: {
     else byCourt.set(key, [slot]);
   }
 
+  /**
+   * A slot inside the lead-time window can no longer be booked, and the grid
+   * must not offer it. It previously came back as AVAILABLE, so every hour
+   * earlier than "now + lead" rendered as a live, tappable price — and holding
+   * one failed with "that slot has already started" only AFTER the player had
+   * picked it and pressed Continue. The rule lives in booking.service
+   * (assertBookable); this reports the same rule to the UI.
+   */
+  const earliestBookable = Date.now() + env.MIN_BOOKING_LEAD_MINUTES * 60_000;
+
   return Array.from(byCourt.entries()).map(([courtId, courtSlots]) => ({
     courtId,
     slots: courtSlots.map((s) => ({
       id: String(s._id),
       startAt: s.startAt,
       endAt: s.endAt,
-      status: s.status === SlotStatus.HELD ? SlotStatus.BOOKED : s.status,
+      status: publicSlotStatus(s.status, s.startAt, earliestBookable),
       pricePaise: s.pricePaise,
     })),
   }));
+}
+
+/** What a slot looks like to a player. */
+export type PublicSlotStatus = SlotStatus | 'past';
+
+function publicSlotStatus(
+  status: SlotStatus,
+  startAt: Date,
+  earliestBookable: number,
+): PublicSlotStatus {
+  /**
+   * HELD is reported as BOOKED: someone is mid-checkout, and telling the world
+   * a slot is "being bought right now" invites a race for it.
+   */
+  if (status === SlotStatus.HELD) return SlotStatus.BOOKED;
+
+  /** Only free slots become 'past' — a booked past slot is still booked. */
+  if (status === SlotStatus.AVAILABLE && startAt.getTime() < earliestBookable) return 'past';
+
+  return status;
 }
 
 /**
@@ -366,8 +396,9 @@ export async function createArenaReview(input: {
     ...(input.comment !== undefined ? { comment: input.comment } : {}),
   });
 
-  const rating = await recomputeArenaRating(arena._id as Types.ObjectId);
-  return { review, rating };
+  /** The venue's public average is derived from reviews, so it moves now. */
+  await recomputeArenaRating(arena._id as Types.ObjectId);
+  return review;
 }
 
 /**

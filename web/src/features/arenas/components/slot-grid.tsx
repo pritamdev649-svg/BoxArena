@@ -1,36 +1,36 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/shared/lib/cn';
 import { MoneyText } from '@/shared/ui/money-text';
 import { Button } from '@/shared/ui/button';
 import { formatTime } from '@/shared/lib/datetime';
+import { holdSlotsAction } from '@/features/booking';
 
-/**
- * Slot grid (task F2.4) — the awkward-state screen.
- *
- * Four states carry meaning, and none rely on colour alone (design_system.md
- * §2 rule 3): available (surface + border), selected (volt fill), booked
- * (inset, struck), blocked (diagonal hatch).
- *
- * Multi-hour selection must be CONTIGUOUS on one court — the backend rejects
- * gaps, so the UI must not let you build one (edge_cases.md §15).
- */
+
 
 export interface GridSlot {
   id: string;
   startAt: string;
   endAt: string;
-  status: 'available' | 'booked' | 'blocked' | 'held';
+  /** `past` is server-computed: the slot is free but inside the booking
+      lead-time window, so it can no longer be held. */
+  status: 'available' | 'booked' | 'blocked' | 'held' | 'past';
   pricePaise: number;
 }
 
 export function SlotGrid({
   courtName,
   slots,
+  arenaSlug,
+  localDate,
 }: {
   courtName: string;
   slots: GridSlot[];
+  arenaSlug: string;
+  /** The IST day these slots belong to — checkout re-reads them by date. */
+  localDate: string;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -76,9 +76,42 @@ export function SlotGrid({
         ))}
       </div>
 
-      <SelectionBar count={selected.length} totalPaise={totalPaise} />
+      <SelectionBar
+        selectedIds={orderedSelection(slots, selected)}
+        totalPaise={totalPaise}
+        arenaSlug={arenaSlug}
+        localDate={localDate}
+      />
     </section>
   );
+}
+
+/** The API requires a contiguous run in start-time order; selection order is
+    whatever the player tapped. Sort before sending. */
+function orderedSelection(slots: GridSlot[], selectedIds: string[]): string[] {
+  return [...selectedIds].sort((a, b) => indexOfSlot(slots, a) - indexOfSlot(slots, b));
+}
+
+/**
+ * Four meanings, none carried by colour alone (design_system.md §2 rule 3):
+ * available (surface + border), selected (volt fill), taken (struck),
+ * passed (faded + label), blocked (hatched).
+ */
+function statusClass(status: GridSlot['status'], isSelected: boolean): string {
+  if (isSelected) return 'bg-volt text-ink-inverse border-volt font-semibold';
+
+  switch (status) {
+    case 'available':
+      return 'border-line bg-surface text-ink hover:border-line-strong';
+    case 'booked':
+    case 'held':
+      return 'bg-inset border-line-subtle text-ink-muted line-through';
+    /** Muted but NOT struck through — nobody booked it, the hour just went. */
+    case 'past':
+      return 'border-line-subtle text-ink-muted opacity-50';
+    case 'blocked':
+      return 'hatch border-line-subtle text-ink-muted';
+  }
 }
 
 function SlotButton({
@@ -92,6 +125,7 @@ function SlotButton({
 }) {
   const isBookable = slot.status === 'available';
   const isBlocked = slot.status === 'blocked';
+  const isPast = slot.status === 'past';
 
   return (
     <button
@@ -102,11 +136,7 @@ function SlotButton({
       /** 44px floor — this is tapped one-handed, outdoors, at night. */
       className={cn(
         'rounded-control flex min-h-11 flex-col items-center justify-center border px-2 py-2 text-xs transition-colors duration-150',
-        isSelected && 'bg-volt text-ink-inverse border-volt font-semibold',
-        !isSelected && isBookable && 'border-line bg-surface text-ink hover:border-line-strong',
-        slot.status === 'booked' && 'bg-inset border-line-subtle text-ink-muted line-through',
-        slot.status === 'held' && 'bg-inset border-line-subtle text-ink-muted line-through',
-        isBlocked && 'hatch border-line-subtle text-ink-muted',
+        statusClass(slot.status, isSelected),
       )}
     >
       <span className="tabular">{formatTime(slot.startAt)}</span>
@@ -116,6 +146,7 @@ function SlotButton({
         </span>
       ) : null}
       {isBlocked ? <span className="label-caps mt-0.5 text-[9px]">Closed</span> : null}
+      {isPast ? <span className="label-caps mt-0.5 text-[9px]">Passed</span> : null}
     </button>
   );
 }
@@ -133,21 +164,86 @@ function isContiguous(slots: GridSlot[], selectedIds: string[]): boolean {
   );
 }
 
-function SelectionBar({ count, totalPaise }: { count: number; totalPaise: number }) {
-  if (count === 0) return null;
+/** Owns the hold request and where it sends you next. */
+function useHold({ arenaSlug, localDate }: { arenaSlug: string; localDate: string }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const start = async (slotIds: string[], expectedTotalPaise: number) => {
+    setPending(true);
+    setError(undefined);
+
+    const result = await holdSlotsAction({ slotIds, expectedTotalPaise });
+
+    if (result.success && result.holdExpiresAt) {
+      const query = new URLSearchParams({
+        venue: arenaSlug,
+        date: localDate,
+        slots: slotIds.join(','),
+        until: result.holdExpiresAt,
+      });
+      router.push(`/checkout?${query.toString()}`);
+      return;
+    }
+
+    setPending(false);
+
+    /** Not an error — they just have not signed in yet. */
+    if (result.needsAuth) {
+      router.push(`/login?next=${encodeURIComponent(`/arenas/${arenaSlug}`)}`);
+      return;
+    }
+
+    setError(result.error ?? 'Could not hold those slots. Try again.');
+    /** Someone else took a slot, or the price moved — the grid is now stale. */
+    router.refresh();
+  };
+
+  return { pending, error, start };
+}
+
+/**
+ * Continue takes the hold, then hands off to checkout.
+ *
+ * The hold happens HERE rather than on the checkout page because the copy
+ * promises it ("held for 5 minutes once you continue") and because holding is
+ * what stops the slot being sold to someone else while this player reads the
+ * total. Checkout only confirms.
+ */
+function SelectionBar({
+  selectedIds,
+  totalPaise,
+  arenaSlug,
+  localDate,
+}: {
+  selectedIds: string[];
+  totalPaise: number;
+  arenaSlug: string;
+  localDate: string;
+}) {
+  const { pending, error, start } = useHold({ arenaSlug, localDate });
+
+  if (selectedIds.length === 0) return null;
 
   return (
-    <div className="border-line bg-surface mt-5 flex flex-wrap items-center justify-between gap-4 border p-4">
-      <div>
-        <p className="text-ink text-sm font-medium">
-          {count} hour{count === 1 ? '' : 's'} selected
-        </p>
-        <p className="text-ink-muted text-xs">Held for 5 minutes once you continue</p>
+    <div className="border-line bg-surface mt-5 border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-ink text-sm font-medium">
+            {selectedIds.length} hour{selectedIds.length === 1 ? '' : 's'} selected
+          </p>
+          <p className="text-ink-muted text-xs">Held for 5 minutes once you continue</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <MoneyText paise={totalPaise} className="text-lg font-semibold" />
+          <Button disabled={pending} onClick={() => void start(selectedIds, totalPaise)}>
+            {pending ? 'Holding…' : 'Continue'}
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center gap-4">
-        <MoneyText paise={totalPaise} className="text-lg font-semibold" />
-        <Button>Continue</Button>
-      </div>
+
+      {error ? <p className="text-loss mt-3 text-sm">{error}</p> : null}
     </div>
   );
 }

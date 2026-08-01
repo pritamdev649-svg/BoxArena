@@ -57,6 +57,8 @@ export interface OwnerArena {
   /** `GET /owner/arenas` returns the whole arena document, so these come free. */
   operatingHours?: OperatingHours[];
   amenities?: string[];
+  /** Venue photos, in display order. The first is the public cover image. */
+  images?: string[];
   depositPercent?: number;
   settlementCycle?: string;
   cancellationPolicy?: { freeCancellationHours: number; partialRefundPercent: number };

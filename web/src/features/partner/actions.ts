@@ -19,6 +19,7 @@ export async function updateArenaSettingsAction(
     cancellationPolicy?: { freeCancellationHours: number; partialRefundPercent: number } | undefined;
     bookingMode?: string | undefined;
     depositPercent?: number | undefined;
+    images?: string[] | undefined;
   },
 ): Promise<UpdateArenaSettingsResult> {
   const token = await getPartnerToken();
@@ -48,5 +49,35 @@ export async function updateArenaSettingsAction(
       return { success: false, error: err.message };
     }
     return { success: false, error: 'Failed to update settings' };
+  }
+}
+
+export interface UploadSignature {
+  signature: string;
+  timestamp: number;
+  apiKey: string;
+  cloudName: string;
+  folder: string;
+  uploadUrl: string;
+  maxBytes: number;
+  allowedFormats: string[];
+}
+
+export async function getArenaUploadSignatureAction(): Promise<
+  { success: true; data: UploadSignature } | { success: false; error: string }
+> {
+  const token = await getPartnerToken();
+  if (!token) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const data = await apiFetch<UploadSignature>(API_ENDPOINTS.uploadSign, {
+      method: 'POST',
+      token,
+      body: { kind: 'arena' },
+    });
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof ApiError) return { success: false, error: err.message };
+    return { success: false, error: 'Could not start the upload' };
   }
 }

@@ -34,6 +34,11 @@ export interface ApiOptions {
   token?: string | undefined;
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
+  /**
+   * Required by every financial mutation (api_contract.md §25). Replaying the
+   * same key returns the original result instead of charging twice.
+   */
+  idempotencyKey?: string | undefined;
 }
 
 function buildInit(options: ApiOptions): RequestInit {
@@ -42,6 +47,7 @@ function buildInit(options: ApiOptions): RequestInit {
     headers: {
       'Content-Type': 'application/json',
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+      ...(options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : {}),
     },
     ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
     /** Panels show live operational data — never serve it from a cache. */

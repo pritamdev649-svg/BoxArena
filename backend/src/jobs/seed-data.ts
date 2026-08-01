@@ -26,7 +26,9 @@ export interface SeedArenaDef {
   coordinates: [number, number];
   sports: SportType[];
   amenities: string[];
-  rating: { average: number; count: number };
+  /** Real ratings left by seeded players. The arena's average is DERIVED
+      from these, never stated — see recomputeArenaRating. */
+  reviews: { rating: number; comment: string }[];
   bookingMode: BookingMode;
   ownerName: string;
   ownerPhone: string;
@@ -44,7 +46,11 @@ export const SEED_ARENAS: SeedArenaDef[] = [
     coordinates: [81.0035, 26.8607],
     sports: [SportType.FOOTBALL, SportType.CRICKET],
     amenities: ['Floodlights', 'Parking', 'Washroom', 'Changing room', 'Drinking water'],
-    rating: { average: 4.6, count: 128 },
+    reviews: [
+      { rating: 5, comment: 'Floodlights are proper. Played till 11pm, no issue seeing the ball.' },
+      { rating: 4, comment: 'Turf is good, parking fills up fast on weekends.' },
+      { rating: 5, comment: 'Box cricket cage is well netted. Nothing goes onto the road.' },
+    ],
     bookingMode: BookingMode.PAY_AT_VENUE_ALLOWED,
     ownerName: 'Vikas Mehrotra',
     ownerPhone: '+919810000001',
@@ -64,7 +70,11 @@ export const SEED_ARENAS: SeedArenaDef[] = [
     coordinates: [80.9346, 26.8894],
     sports: [SportType.BADMINTON],
     amenities: ['Air conditioned', 'Wooden court', 'Parking', 'Washroom', 'Cafeteria'],
-    rating: { average: 4.8, count: 214 },
+    reviews: [
+      { rating: 5, comment: 'Wooden court and AC actually works. Best in Aliganj.' },
+      { rating: 5, comment: 'Shuttle drift is minimal with the AC on. Courts are well marked.' },
+      { rating: 4, comment: 'Great courts. Cafeteria shuts early on weekdays.' },
+    ],
     bookingMode: BookingMode.PREPAID_ONLY,
     ownerName: 'Anjali Bhatnagar',
     ownerPhone: '+919810000002',
@@ -85,7 +95,10 @@ export const SEED_ARENAS: SeedArenaDef[] = [
     coordinates: [80.9812, 26.8768],
     sports: [SportType.CRICKET, SportType.FOOTBALL, SportType.BADMINTON],
     amenities: ['Floodlights', 'Parking', 'Washroom', 'Equipment rental', 'First aid', 'CCTV'],
-    rating: { average: 4.3, count: 76 },
+    reviews: [
+      { rating: 4, comment: 'Decent surface for the price. Changing room is basic.' },
+      { rating: 5, comment: 'Staff let us start early when the previous slot ended. Sound people.' },
+    ],
     bookingMode: BookingMode.PAY_AT_VENUE_ALLOWED,
     ownerName: 'Sanjay Dixit',
     ownerPhone: '+919810000003',
@@ -105,7 +118,10 @@ export const SEED_ARENAS: SeedArenaDef[] = [
     coordinates: [80.9462, 26.8543],
     sports: [SportType.FOOTBALL],
     amenities: ['Floodlights', 'Washroom', 'Drinking water'],
-    rating: { average: 3.9, count: 41 },
+    reviews: [
+      { rating: 4, comment: 'Fine for a casual game. Nets need replacing on one side.' },
+      { rating: 3, comment: 'Surface had a couple of worn patches near the centre.' },
+    ],
     bookingMode: BookingMode.PREPAID_ONLY,
     ownerName: 'Imran Siddiqui',
     ownerPhone: '+919810000004',
@@ -125,7 +141,7 @@ export const SEED_ARENAS: SeedArenaDef[] = [
     coordinates: [81.0421, 26.8889],
     sports: [SportType.BADMINTON],
     amenities: ['Washroom'],
-    rating: { average: 0, count: 0 },
+    reviews: [],
     bookingMode: BookingMode.PREPAID_ONLY,
     ownerName: 'Rakesh Pandey',
     ownerPhone: '+919810000005',

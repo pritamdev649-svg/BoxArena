@@ -52,12 +52,6 @@ export function createApp(): Express {
     }),
   );
 
-  /**
-   * The Razorpay webhook must see the RAW body — HMAC is computed over the
-   * exact bytes, and parsing to JSON then re-stringifying changes them
-   * (edge_cases.md §31). Mounted before the global JSON parser, on that path
-   * only.
-   */
   app.use('/api/v1/webhooks/razorpay', express.raw({ type: 'application/json' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
@@ -76,12 +70,11 @@ export function createApp(): Express {
     }),
   );
 
-  /** Liveness: no dependencies, so a dead DB doesn't get the pod killed. */
+
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', uptime: process.uptime() });
   });
 
-  /** Readiness: checks dependencies, so the LB stops sending traffic. */
   app.get('/health/ready', (_req, res) => {
     const dbReady = mongoose.connection.readyState === 1;
     res.status(dbReady ? 200 : 503).json({

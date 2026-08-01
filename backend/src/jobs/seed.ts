@@ -11,6 +11,7 @@ import {
   BookingStatus,
   CourtModel,
   PlayerSportStatsModel,
+  ReviewModel,
   SlotModel,
   SlotStatus,
   TeamModel,
@@ -24,6 +25,7 @@ import {
 import { checkInCode, publicId, referralCode } from '../shared/utils/ids.js';
 import { istDateTimeToUtc, istDayOfWeek, toLocalDate } from '../shared/utils/datetime.js';
 import { applyLedgerEntry } from '../modules/wallet/wallet.service.js';
+import { recomputeArenaRating } from '../modules/arenas/arena.service.js';
 import {
   OPERATING_HOURS,
   SEED_APPLICATIONS,
@@ -130,7 +132,9 @@ async function seedArena(definition: SeedArenaDef) {
         amenities: definition.amenities,
         operatingHours: OPERATING_HOURS,
         contactPhone: definition.ownerPhone,
-        rating: definition.rating,
+        /** No rating is seeded. It is recomputed from the seeded reviews at
+            the end of the run, so the number on the venue page always equals
+            the reviews listed under it. */
         isVerified: definition.isVerified,
         bookingMode: definition.bookingMode,
       },
@@ -267,6 +271,82 @@ async function seedBookings(): Promise<number> {
   }
 
   return created;
+}
+
+/**
+ * Played-and-reviewed history, so venue pages have something true to show.
+ *
+ * A review requires a COMPLETED booking at that venue by that player — the API
+ * enforces it, and seeding around it would produce ratings the product itself
+ * would reject. So this creates the past bookings first, then reviews them,
+ * then lets recomputeArenaRating derive the average.
+ *
+ * The alternative, which this replaces, was writing `rating: 4.6, count: 128`
+ * straight onto the arena. That number could never be reconciled with the
+ * (empty) review list beside it, and there was no path by which it ever became
+ * true.
+ */
+async function seedPlayedHistory(): Promise<{ bookings: number; reviews: number }> {
+  const players = await UserModel.find({ role: UserRole.PLAYER }).limit(6);
+  let bookings = 0;
+  let reviews = 0;
+
+  for (const definition of SEED_ARENAS) {
+    if (definition.reviews.length === 0) continue;
+
+    const arena = await ArenaModel.findOne({ slug: definition.slug });
+    const court = arena ? await CourtModel.findOne({ arenaId: arena._id }) : null;
+    if (!arena || !court) continue;
+
+    for (const [index, review] of definition.reviews.entries()) {
+      const player = players[index % players.length];
+      if (!player) continue;
+
+      /** One slot per past day, walking backwards from yesterday. */
+      const startAt = new Date(Date.now() - (index + 1) * 86_400_000);
+      const idempotencyKey = `seed:played:${definition.slug}:${index}`;
+
+      const booking =
+        (await BookingModel.findOne({ idempotencyKey })) ??
+        (await BookingModel.create({
+          publicId: publicId('bkg'),
+          arenaId: arena._id,
+          courtId: court._id,
+          slotIds: [],
+          bookerId: player._id,
+          sport: court.sport,
+          startAt,
+          endAt: new Date(startAt.getTime() + 3_600_000),
+          subtotalPaise: court.basePricePerHourPaise,
+          totalPaise: court.basePricePerHourPaise,
+          paidFromWalletPaise: court.basePricePerHourPaise,
+          status: BookingStatus.COMPLETED,
+          source: BookingSource.APP,
+          balanceDuePaise: 0,
+          idempotencyKey,
+          checkInCode: checkInCode(),
+          checkedInAt: startAt,
+        }));
+      bookings += 1;
+
+      const existing = await ReviewModel.findOne({ bookingId: booking._id, userId: player._id });
+      if (existing) continue;
+
+      await ReviewModel.create({
+        arenaId: arena._id,
+        userId: player._id,
+        bookingId: booking._id,
+        rating: review.rating,
+        comment: review.comment,
+      });
+      reviews += 1;
+    }
+
+    /** Derive the average — the same call the live review endpoint makes. */
+    await recomputeArenaRating(arena._id as Types.ObjectId);
+  }
+
+  return { bookings, reviews };
 }
 
 /** Applications sitting in the admin approval queue. */
@@ -411,6 +491,7 @@ async function seed(): Promise<void> {
 
   await seedTeamsAndStats();
   const bookings = await seedBookings();
+  const played = await seedPlayedHistory();
   const applications = await seedApplications();
 
   logger.info(
@@ -420,7 +501,8 @@ async function seed(): Promise<void> {
       slots: await SlotModel.countDocuments(),
       users: await UserModel.countDocuments(),
       teams: await TeamModel.countDocuments(),
-      bookings,
+      bookings: bookings + played.bookings,
+      reviews: played.reviews,
       applications,
     },
     'Seed complete',

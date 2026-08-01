@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { t } from '@/shared/i18n';
 import type { OwnerArena, OperatingHours } from '@/features/partner';
+import { PhotoManager } from '@/features/partner';
 import { updateArenaSettingsAction } from '@/features/partner/actions';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -35,6 +36,7 @@ export function SettingsForm({ arena }: { arena: OwnerArena }) {
     ]
   );
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(arena.amenities ?? []);
+  const [images, setImages] = useState<string[]>(arena.images ?? []);
   
   const [freeCancellationHours, setFreeCancellationHours] = useState<number>(
     arena.cancellationPolicy?.freeCancellationHours ?? 12
@@ -81,6 +83,7 @@ export function SettingsForm({ arena }: { arena: OwnerArena }) {
     const result = await updateArenaSettingsAction(arena.publicId, {
       operatingHours: hours,
       amenities: selectedAmenities,
+      images,
       cancellationPolicy: {
         freeCancellationHours,
         partialRefundPercent,
@@ -175,6 +178,13 @@ export function SettingsForm({ arena }: { arena: OwnerArena }) {
               </div>
             ))}
         </div>
+      </SettingsSection>
+
+      <SettingsSection
+        heading={t('partnerPhotos.heading')}
+        body={t('partnerPhotos.body')}
+      >
+        <PhotoManager images={images} onChange={setImages} />
       </SettingsSection>
 
       <SettingsSection
