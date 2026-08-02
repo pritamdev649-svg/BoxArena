@@ -150,12 +150,20 @@ export async function payOfficial(match: IMatch, session: ClientSession): Promis
   );
   const netPaise = totalPaise - commissionPaise;
 
-  if (netPaise > 0) {
+  /**
+   * Credit the GROSS, then take the commission as its own row.
+   *
+   * Crediting the net and *also* posting a commission row deducts it twice —
+   * which is exactly what happened before this comment existed. Two rows that
+   * read "fee 400" and "commission −40" also make the official's ledger
+   * self-explanatory, which a single net line never is.
+   */
+  if (totalPaise > 0) {
     await applyLedgerEntry(
       {
         userId: official.userId as Types.ObjectId,
         bucket: WalletBucket.WINNINGS,
-        amountPaise: netPaise,
+        amountPaise: totalPaise,
         type: TransactionType.PRIZE_PAYOUT,
         description: `Officiating fee for match ${match.publicId}`,
         idempotencyKey: `official-payout:${match.publicId}`,

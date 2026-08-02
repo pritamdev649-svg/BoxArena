@@ -9,6 +9,83 @@
  */
 
 export const moneyCopy = {
+  /** Posting a challenge on a booking you already hold. */
+  postChallenge: {
+    metaTitle: 'Post a challenge',
+    title: 'Post a challenge',
+    description:
+      'Put a slot you have booked in front of teams at your level. Set an entry fee, or post it as a friendly.',
+    bookingHeading: 'Which booking',
+    aVenue: 'Your booking',
+    teamHeading: 'Who is playing',
+    newTeam: 'Create a new team…',
+    teamNameLabel: 'Team name',
+    teamNameHint: 'For singles this is just you — the name is what opponents see.',
+    feeHeading: 'Entry fee',
+    feeLabel: 'Entry fee per team (₹)',
+    feeHint: 'Leave at 0 to post a friendly. Both sides pay this, and the winner takes the pool.',
+    yourCost: 'You pay',
+    opponentCost: 'Your opponent pays',
+    useMinimum: 'Use the break-even fee:',
+    post: 'Post challenge',
+    posting: 'Posting…',
+    failed: 'Could not post the challenge',
+    noBookingsTitle: 'You have no upcoming bookings',
+    noBookingsBody: 'Book a court first — a challenge is posted on a slot you already hold.',
+  },
+
+  /** Wallet: balances, top-up and the ledger. */
+  wallet: {
+    metaTitle: 'Wallet',
+    title: 'Wallet',
+    description: 'Top up here, then book and stake straight from your balance.',
+    depositHeading: 'Deposit',
+    winningsHeading: 'Winnings',
+    bonusHeading: 'Bonus',
+    lockedHeading: 'Locked in escrow',
+    spendable: 'Spendable now',
+    bonusNote: 'Bonus credit can be played with but never withdrawn.',
+    lockedNote: 'Held against an open challenge or a booking you have not finished paying for.',
+    topupHeading: 'Add money',
+    topupBody: 'Lands in your deposit balance straight away.',
+    amountLabel: 'Amount (₹)',
+    addMoney: 'Add money',
+    adding: 'Adding…',
+    minimum: 'Minimum top-up is',
+    credited: { one: '₹{count} added to your wallet.', other: '₹{count} added to your wallet.' },
+    failed: 'That top-up did not go through.',
+    gatewayNotWired:
+      'Card and UPI payments are not switched on for the website yet. Mock payments are off, so this cannot complete here.',
+    ledgerHeading: 'Every movement',
+    ledgerEmpty: 'Nothing here yet. Your first top-up will show up on this list.',
+    withdrawHeading: 'Withdrawals',
+    withdrawBody:
+      'Withdrawals are not open yet. When they are, you will need KYC verification and only winnings can be withdrawn.',
+    withdrawableHeading: 'Available to withdraw',
+    withdrawableNote:
+      'Winnings only. Deposits are refunded to the card or UPI id they came from, and bonus credit is never withdrawable.',
+    withdrawAmountLabel: 'Withdraw (₹)',
+    withdrawCta: 'Request withdrawal',
+    withdrawPending: 'Requesting…',
+    withdrawMinimum: 'Minimum withdrawal is',
+    withdrawTds: 'TDS of {count}% is deducted on winnings withdrawn, as the Income Tax Act requires.',
+    withdrawYouGet: 'You receive',
+    withdrawKycBlocked: 'Verify your identity before you can withdraw. It takes a day or so.',
+    withdrawNoDestination: 'Add a bank account or UPI id to your profile first — we need somewhere to send it.',
+    withdrawNothing: 'You have no winnings to withdraw yet. Win a match and it lands here.',
+    withdrawRequested: 'Requested. Money leaves your balance now and reaches you once ops approves.',
+    withdrawFailed: 'That withdrawal could not be requested.',
+    withdrawHistory: 'Your requests',
+    withdrawTdsRow: 'TDS',
+    statusPending: 'Awaiting review',
+    statusApproved: 'Approved',
+    statusProcessing: 'Sending',
+    statusCompleted: 'Paid out',
+    statusRejected: 'Rejected',
+    statusFailed: 'Failed',
+    topUpCta: 'Top up your wallet',
+  },
+
   /** Checkout: the held-slot confirmation step. */
   checkout: {
     metaTitle: 'Confirm your booking',

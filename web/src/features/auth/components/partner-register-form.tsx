@@ -155,7 +155,12 @@ function VerifyVenueStep({
       setError(result.error ?? t('auth.invalidCode'));
       return;
     }
-    router.push('/partner/dashboard');
+    /**
+     * Straight into the wizard, not the panel. The panel is for a venue that
+     * is already live; a freshly verified applicant has no arena to manage
+     * yet, and landing them on an empty dashboard is where onboarding stalled.
+     */
+    router.push('/partner/onboarding');
     router.refresh();
   };
 

@@ -111,7 +111,12 @@ partnerRoutes.get('/application', authenticate, requireRole(UserRole.ARENA_OWNER
 partnerRoutes.patch('/application/step/:n', authenticate, requireRole(UserRole.ARENA_OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
   try {
     const step = Number(req.params.n);
-    const updated = await service.updatePartnerApplicationStep(currentUser(req)._id, step, req.body);
+    const updated = await service.updatePartnerApplicationStep(
+      currentUser(req)._id,
+      step,
+      req.body,
+      req.ip,
+    );
     ok(res, updated);
   } catch (err) {
     next(err);

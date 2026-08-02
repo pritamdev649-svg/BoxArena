@@ -20,6 +20,7 @@ import {
   NotFoundError,
 } from '../../shared/errors/app-error.js';
 import { publicId } from '../../shared/utils/ids.js';
+import { assertChallengeSport } from '../../shared/config/sports.js';
 
 /**
  * The officials marketplace (featuredoc/11 §OF1–OF5).
@@ -65,6 +66,8 @@ export async function registerOfficial(input: RegisterOfficialInput) {
   if (input.sports.length === 0) {
     throw new BadRequestError('Pick at least one sport you officiate');
   }
+  /** Officials exist to verify staked results, so they follow challenge scope. */
+  for (const sport of input.sports) assertChallengeSport(sport);
 
   let linkedArenaId: Types.ObjectId | undefined;
 

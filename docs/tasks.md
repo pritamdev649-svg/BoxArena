@@ -116,6 +116,8 @@ Upcoming/past lists, detail with check-in code, cancellation with the refund tie
 ### F2.7 — Wallet
 **Dep:** F1.2, P0.4
 Three buckets (deposit/winnings/bonus) with locked shown separately, ledger with filters, top-up sheet, withdrawal with KYC gate.
+
+The withdrawal form shows **TDS and the net figure before you submit** — "why did I get ₹700 when I asked for ₹1,000" is the support ticket this prevents. The balance leaves on request, not on approval, so the same rupees cannot be requested twice while ops works the queue.
 **Done when:** bonus money is visibly non-withdrawable; the ledger paginates by cursor.
 
 ---
@@ -165,6 +167,10 @@ In-app inbox, unread badge, per-type preferences, deep links to the right screen
 **Dep:** F4.1
 All 7 steps from `arena_onboarding.md §4`, resumable, saving per step. **Step 2 requires dragging the map pin to the gate and confirming.** Step 5 shows a live computed weekly price grid.
 **Done when:** closing the browser mid-wizard and returning resumes at the same step; the pin cannot be skipped.
+
+**Built, with two deviations.** Step 2 takes **typed coordinates** with a mandatory confirmation rather than a draggable pin — the pin cannot be skipped, but Places Autocomplete and the map still need the Maps JS API wired. Step 5 is **skippable**: each court's base per-hour price from step 3 already prices every slot, and requiring a weekday/weekend/holiday matrix before go-live is where onboarding dies. Bands are added later from the panel.
+
+Every step is validated server-side against its own schema. It previously accepted `any`, so an application could reach the ops queue with a court priced `"free"` or coordinates in the Bay of Bengal, and the first person to find out was whoever tried to approve it.
 
 ### F4.3 — Partner dashboard
 **Dep:** F1.4

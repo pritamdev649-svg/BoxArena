@@ -53,6 +53,7 @@ export const en = {
     adminOverview: 'Overview',
     adminApplications: 'Applications',
     adminDisputes: 'Disputes',
+    adminWithdrawals: 'Withdrawals',
     adminUsers: 'Users',
     adminAudit: 'Audit log',
   },
@@ -160,6 +161,28 @@ export const en = {
     },
   },
 
+  /** Player profile. */
+  player: {
+    metaTitle: 'Player profile',
+    recordHeading: 'Record',
+    noMatches: 'No completed matches yet. A record appears after the first verified result.',
+    record: { one: '{count} match played', other: '{count} matches played' },
+    rating: 'Rating',
+    winRate: 'Win rate',
+    won: 'W',
+    lost: 'L',
+    drawn: 'D',
+    notFound: 'That player does not exist, or their account is no longer active.',
+    yourProfile: 'Your profile',
+    walletHeading: 'Wallet',
+    deposit: 'Deposit',
+    winnings: 'Winnings',
+    bonus: 'Bonus',
+    locked: 'Locked in escrow',
+    bonusNote: 'Bonus credit can be played with but never withdrawn.',
+    publicView: 'View public profile',
+  },
+
   leaderboard: {
     metaTitle: 'Lucknow city table',
     metaDescription: 'Badminton, box cricket and turf football rankings across Lucknow.',
@@ -173,6 +196,9 @@ export const en = {
     unrankedNote:
       'Players with no completed matches start at 1200 and are unranked until their first result.',
     recentForm: 'Recent form',
+    unranked: 'Unranked — no completed matches yet',
+    empty: 'No players on this table yet.',
+    noForm: 'No matches played',
   },
 
   challenges: {
@@ -184,6 +210,11 @@ export const en = {
     description:
       'Post a slot you’ve booked, set an entry fee, and get matched with a team at your level.',
     postCta: 'Post a challenge',
+    aTeam: 'A team',
+    entry: 'Entry',
+    emptyTitle: 'No open challenges right now',
+    emptyBody: 'Book a slot, post it here with an entry fee, and get matched with a team at your level.',
+    emptySignedOut: 'Sign in to see teams looking for an opponent near you.',
   },
 
   partner: {

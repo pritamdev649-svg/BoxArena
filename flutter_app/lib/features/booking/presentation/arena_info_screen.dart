@@ -1,25 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/app_theme.dart';
-import 'package:app/core/mock/seed_data.dart';
+import 'package:app/core/models/arena.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:app/core/widgets/arena_image.dart';
+import 'package:app/features/booking/providers/arena_detail_providers.dart';
 
-class CompletedMatchRow {
-  final String teamA;
-  final String teamB;
-  final String sport;
-  final String date;
-  final String result;
-
-  CompletedMatchRow({
-    required this.teamA,
-    required this.teamB,
-    required this.sport,
-    required this.date,
-    required this.result,
-  });
-}
-
-class ArenaInfoScreen extends StatelessWidget {
-  final MockArena arena;
+/// Venue info and statistics.
+///
+/// Every number on this screen used to be derived from `arena.name.hashCode`
+/// — a total-bookings figure that was stable, plausible, and entirely
+/// fictional — and the match table below listed four invented fixtures. Both
+/// now come from the API, and a venue with no history says so.
+class ArenaInfoScreen extends ConsumerWidget {
+  final Arena arena;
 
   const ArenaInfoScreen({super.key, required this.arena});
 
@@ -36,55 +30,15 @@ class ArenaInfoScreen extends StatelessWidget {
     return Icons.check_circle_outline_rounded;
   }
 
-  List<CompletedMatchRow> _getMockMatchHistory(String arenaName) {
-    // Generate realistic completed matches based on arena name hash
-    final list = <CompletedMatchRow>[];
-    final sports = arena.sportsSupported;
-    if (sports.isEmpty) return list;
-
-    final primarySport = sports.first;
-    final secondarySport = sports.length > 1 ? sports[1] : sports.first;
-
-    list.add(CompletedMatchRow(
-      teamA: 'Gomti Smashers',
-      teamB: 'Aliganj Knights',
-      sport: primarySport,
-      date: '28 Jul, 2026',
-      result: 'Smashers won by 3 wickets/pts',
-    ));
-    list.add(CompletedMatchRow(
-      teamA: 'LKO Titans',
-      teamB: 'Chowk Warriors',
-      sport: secondarySport,
-      date: '25 Jul, 2026',
-      result: 'Titans won by 14 runs/pts',
-    ));
-    list.add(CompletedMatchRow(
-      teamA: 'Hazratganj United',
-      teamB: 'Indiranagar Bulls',
-      sport: primarySport,
-      date: '22 Jul, 2026',
-      result: 'Draw Match (Matched ELO)',
-    ));
-    list.add(CompletedMatchRow(
-      teamA: 'Aminabad Falcons',
-      teamB: 'Naka Strikers',
-      sport: secondarySport,
-      date: '18 Jul, 2026',
-      result: 'Falcons won by 2 pts',
-    ));
-
-    return list;
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final seed = arena.name.hashCode.abs();
-    final totalBookings = (seed % 150) + 320;
-    final completedMatches = (seed % 90) + 180;
-    final uniquePlayers = (seed % 250) + 540;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stats = ref.watch(arenaStatsProvider(arena.publicId)).value;
+    final totalBookings = stats?.hoursBooked ?? 0;
+    final completedMatches = stats?.matchesPlayed ?? 0;
+    final uniquePlayers = stats?.playersHosted ?? 0;
 
-    final matchesList = _getMockMatchHistory(arena.name);
+    final matchesList =
+        ref.watch(arenaMatchesProvider(arena.publicId)).value ?? const [];
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -98,20 +52,7 @@ class ArenaInfoScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Image Banner
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                arena.imageUrl,
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  height: 180,
-                  color: AppColors.bgInset,
-                  child: Icon(Icons.image_not_supported_rounded, size: 48, color: AppColors.textMuted),
-                ),
-              ),
-            ),
+            ArenaImage(url: arena.imageUrl, height: 180),
             const SizedBox(height: 20),
 
             // Description Section
@@ -265,10 +206,10 @@ class ArenaInfoScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('${match.teamA} vs', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                                    Text(match.teamB, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                                    Text('${match.creator} vs', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                                    Text(match.opponent, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                                     const SizedBox(height: 2),
-                                    Text(match.date, style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                                    Text(DateFormat('d MMM, yyyy').format(match.playedAt), style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
                                   ],
                                 ),
                               ),
@@ -284,7 +225,13 @@ class ArenaInfoScreen extends StatelessWidget {
                               verticalAlignment: TableCellVerticalAlignment.middle,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                child: Text(match.result, style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.bold)),
+                                child: Text(
+                                  match.winner == null
+                                      ? (match.scoreline ?? '—')
+                                      : '${match.winner} won'
+                                          '${match.scoreline == null ? '' : ' · ${match.scoreline}'}',
+                                  style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.bold),
+                                ),
                               ),
                             ),
                           ],

@@ -14,6 +14,15 @@ import { env } from '../../shared/config/env.js';
 export interface MoneyInput {
   /** Court hire for the slot, total (not per team). */
   venueFeePaise: number;
+  /**
+   * Whether the court cost is actually shared.
+   *
+   * It usually is NOT: one player books and pays the whole slot, then posts a
+   * challenge on it. Splitting it in the breakdown told the accepting side
+   * they owed half a court they will never be charged for — see
+   * `perTeamCostPaise` below.
+   */
+  venueFeeIsShared?: boolean;
   /** The official's fee for the match, total. */
   officialFeePaise: number;
   /** Entry fee PER TEAM. This is the only money that becomes prize. */
@@ -35,6 +44,8 @@ export interface MoneyBreakdown {
   winnerNetProfitPaise: number;
   /** What a loser is down. Always negative or zero. */
   loserNetPaise: number;
+  /** What the challenge CREATOR is out of pocket — they paid for the court. */
+  creatorTotalCostPaise: number;
   /** Lowest entry fee at which the winner does not lose money. */
   suggestedMinimumEntryFeePaise: number;
   /** True when the winner would gain nothing — MM2's soft warning. */
@@ -80,11 +91,21 @@ export function calculateMatchMoney(input: MoneyInput): MoneyBreakdown {
   const commissionPercentOfficial =
     input.commissionPercentOfficial ?? env.OFFICIAL_COMMISSION_PERCENT;
 
-  /** Costs are shared evenly; the entry fee is per team on top. */
+  /**
+   * What the ACCEPTING side actually pays.
+   *
+   * The official's fee is genuinely split — `collectOfficialFee` charges both
+   * captains. The court is not: whoever booked the slot already paid for it in
+   * full, so an opponent accepting a challenge is charged the official share
+   * and the entry fee only. Showing them half a court fee they are never
+   * billed for is a number they can disprove from their own wallet.
+   */
+  const venueShare = input.venueFeeIsShared
+    ? Math.ceil(input.venueFeePaise / teamCount)
+    : 0;
+
   const perTeamCostPaise =
-    Math.ceil(input.venueFeePaise / teamCount) +
-    Math.ceil(input.officialFeePaise / teamCount) +
-    input.entryFeePaise;
+    venueShare + Math.ceil(input.officialFeePaise / teamCount) + input.entryFeePaise;
 
   const totalEntryPoolPaise = input.entryFeePaise * teamCount;
 
@@ -123,6 +144,12 @@ export function calculateMatchMoney(input: MoneyInput): MoneyBreakdown {
     winnerNetProfitPaise: netPrizePoolPaise - perTeamCostPaise,
     /** A loser recovers nothing: their whole outlay is gone. */
     loserNetPaise: -perTeamCostPaise,
+    /** The creator's own outlay, which the court fee always sits inside. */
+    creatorTotalCostPaise:
+      input.venueFeePaise -
+      venueShare * (teamCount - 1) +
+      Math.ceil(input.officialFeePaise / teamCount) +
+      input.entryFeePaise,
     suggestedMinimumEntryFeePaise: suggestedMinimumEntryFee({
       venueFeePaise: input.venueFeePaise,
       officialFeePaise: input.officialFeePaise,

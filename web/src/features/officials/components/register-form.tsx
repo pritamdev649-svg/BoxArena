@@ -14,7 +14,13 @@ import { registerOfficialAction } from '../actions';
  * money match: that needs ID verification, which ops does afterwards. The form
  * says so plainly rather than letting someone discover it at a match.
  */
-const SPORTS = ['badminton', 'cricket', 'football'] as const;
+/**
+ * Officials verify staked results, so they follow CHALLENGE scope — badminton
+ * only for now, not the wider set of sports venues can sell. The server is the
+ * authority (`shared/config/sports.ts`); listed here so the form never offers
+ * a sport the API will refuse.
+ */
+const SPORTS = ['badminton'] as const;
 
 function useRegistration() {
   const [displayName, setDisplayName] = useState('');

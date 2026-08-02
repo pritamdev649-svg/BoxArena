@@ -130,6 +130,71 @@ export async function getArenaStats(arenaId: Types.ObjectId): Promise<ArenaStats
   };
 }
 
+/**
+ * Recent settled matches at one venue.
+ *
+ * Scoreline is rendered here rather than client-side so web and mobile cannot
+ * drift on how a badminton result reads.
+ */
+export async function getArenaStatsByPublicId(arenaPublicId: string) {
+  const arena = await ArenaModel.findOne({ publicId: arenaPublicId }).select('_id').lean();
+  if (!arena) throw new NotFoundError('Arena');
+  return getArenaStats(arena._id as Types.ObjectId);
+}
+
+export async function getArenaMatchHistory(arenaPublicId: string, limit = 10) {
+  const arena = await ArenaModel.findOne({ publicId: arenaPublicId }).select('_id').lean();
+  if (!arena) throw new NotFoundError('Arena');
+
+  const matches = await MatchModel.find({
+    arenaId: arena._id,
+    status: { $in: SETTLED_MATCH },
+  })
+    .select('publicId sport scheduledAt finalScore winnerTeamId creatorTeamId opponentTeamId')
+    .sort({ scheduledAt: -1 })
+    .limit(Math.min(limit, 50))
+    .populate('creatorTeamId opponentTeamId', 'name')
+    .lean();
+
+  return matches.map((match) => {
+    type PopulatedTeam = { _id?: Types.ObjectId; name?: string } | null;
+    const creator = match.creatorTeamId as unknown as PopulatedTeam;
+    const opponent = match.opponentTeamId as unknown as PopulatedTeam;
+    const winnerId = match.winnerTeamId ? String(match.winnerTeamId) : null;
+
+    /**
+     * The winner is returned as a NAME, not an id: the client has no team
+     * lookup and would otherwise have to guess which side won.
+     */
+    let winner: string | null = null;
+    if (winnerId === String(creator?._id)) winner = creator?.name ?? null;
+    else if (winnerId === String(opponent?._id)) winner = opponent?.name ?? null;
+
+    return {
+      publicId: match.publicId,
+      sport: match.sport,
+      playedAt: match.scheduledAt,
+      creator: creator?.name ?? 'Team',
+      opponent: opponent?.name ?? 'Team',
+      winner,
+      scoreline: scorelineOf(match.finalScore),
+    };
+  });
+}
+
+/** "21-18, 19-21, 21-16" — or null when the match settled without a scorecard. */
+function scorelineOf(finalScore: unknown): string | null {
+  const games = (finalScore as { badminton?: { games?: unknown[] } } | null)?.badminton?.games;
+  if (!Array.isArray(games) || games.length === 0) return null;
+
+  return games
+    .map((game) => {
+      const row = game as { teamA?: number; teamB?: number };
+      return `${String(row.teamA ?? 0)}-${String(row.teamB ?? 0)}`;
+    })
+    .join(', ');
+}
+
 export async function getArenaBySlug(slug: string) {
   const arena = await ArenaModel.findOne({ slug, isActive: true }).lean();
   if (!arena) throw new NotFoundError('Arena');

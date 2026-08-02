@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { z } from 'zod';
 import type { Types } from 'mongoose';
 import { env } from '../../shared/config/env.js';
 import {
@@ -13,6 +14,8 @@ import {
   UserRole,
   ArenaApplicationModel,
   ApplicationStatus,
+  BookingMode,
+  SportType,
   OtpModel,
   AccountStatus,
   type IArena,
@@ -495,11 +498,117 @@ export async function getPartnerApplication(userId: Types.ObjectId) {
   return application;
 }
 
+/**
+ * One wizard step, validated.
+ *
+ * Each step has its own shape, so validation lives here rather than in the
+ * route: the route only knows a number. This used to accept `any`, which meant
+ * an application could reach the ops queue with a court priced at `"free"` or
+ * a pin in the Bay of Bengal, and the first person to find out was whoever
+ * tried to approve it.
+ */
+const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/u, 'Use HH:MM, 24-hour');
+
+const stepSchemas = {
+  1: z.object({
+    name: z.string().min(2).max(120),
+    description: z.string().max(2000).optional(),
+    contactPhone: z.string().regex(/^[6-9]\d{9}$/u, 'Enter a 10-digit Indian mobile number'),
+    /** Three photos minimum — the single biggest driver of booking conversion. */
+    images: z.array(z.string().url()).min(3, 'Add at least 3 photos').max(10),
+  }),
+
+  2: z.object({
+    address: z.object({
+      formattedAddress: z.string().min(5),
+      areaName: z.string().min(2),
+      city: z.string().min(2).default('Lucknow'),
+      pincode: z.string().regex(/^\d{6}$/u).optional(),
+      googlePlaceId: z.string().optional(),
+    }),
+    /**
+     * [lng, lat], bounded to India. A pin outside these bounds is a
+     * transposed pair or a mis-drag, and a venue that geocodes into the sea
+     * never appears in radius search.
+     */
+    coordinates: z.tuple([z.number().min(68).max(98), z.number().min(6).max(38)]),
+    pinConfirmedByOwner: z.literal(true, {
+      message: 'Drag the pin to your gate and confirm it',
+    }),
+  }),
+
+  3: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(50),
+        sport: z.nativeEnum(SportType),
+        surface: z.string().max(40).optional(),
+        isIndoor: z.boolean().default(false),
+        capacity: z.number().int().min(1).max(50).optional(),
+        basePricePerHourPaise: z.number().int().min(0).max(2_000_000),
+      }),
+    )
+    .min(1, 'Add at least one court'),
+
+  4: z
+    .array(
+      z.object({
+        dayOfWeek: z.number().int().min(0).max(6),
+        openTime: timeOfDay,
+        closeTime: timeOfDay,
+        isClosed: z.boolean().default(false),
+      }),
+    )
+    .length(7, 'Set hours for all seven days'),
+
+  5: z.array(z.record(z.string(), z.unknown())),
+
+  6: z.object({
+    amenities: z.array(z.string().max(40)).max(20),
+    cancellationPolicy: z.object({
+      freeCancellationHours: z.number().int().min(0).max(168),
+      partialRefundPercent: z.number().int().min(0).max(100),
+    }),
+    bookingMode: z.nativeEnum(BookingMode),
+  }),
+
+  7: z.object({
+    payout: z.object({
+      accountHolderName: z.string().min(2).max(120),
+      ifsc: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/u).optional(),
+      accountNumber: z.string().min(6).max(20).optional(),
+      vpa: z.string().max(80).optional(),
+      pan: z.string().regex(/^[A-Z]{5}\d{4}[A-Z]$/u),
+      gstin: z.string().max(20).optional(),
+    }),
+    agreement: z.object({
+      commissionPercent: z.number().min(0).max(50),
+      settlementCycle: z.string().max(20).default('weekly'),
+      acceptedTerms: z.literal(true, {
+        message: 'Accept the partner terms to continue',
+      }),
+    }),
+  }),
+} as const;
+
 export async function updatePartnerApplicationStep(
   userId: Types.ObjectId,
   step: number,
-  stepData: any
+  stepData: unknown,
+  /** Recorded with the agreement — a T&C acceptance with no IP proves little. */
+  acceptedIp?: string,
 ) {
+  const schema = stepSchemas[step as keyof typeof stepSchemas];
+  if (!schema) throw new BadRequestError('Invalid wizard step');
+
+  const parsed = schema.safeParse(stepData);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    throw new BadRequestError(
+      first ? `${first.path.join('.')}: ${first.message}` : 'That step is incomplete',
+    );
+  }
+
   const application = await ArenaApplicationModel.findOne({
     applicantUserId: userId,
     status: ApplicationStatus.IN_PROGRESS,
@@ -507,22 +616,33 @@ export async function updatePartnerApplicationStep(
 
   if (!application) throw new NotFoundError('Application');
 
-  if (step === 1) application.venue = stepData;
-  else if (step === 2) application.location = stepData;
-  else if (step === 3) application.courts = stepData;
-  else if (step === 4) application.operatingHours = stepData;
-  else if (step === 5) application.pricingRules = stepData;
+  const data = parsed.data as never;
+
+  if (step === 1) application.venue = data;
+  else if (step === 2) application.location = data;
+  else if (step === 3) application.courts = data;
+  else if (step === 4) application.operatingHours = data;
+  else if (step === 5) application.pricingRules = data;
   else if (step === 6) {
-    application.amenities = stepData.amenities;
-    application.cancellationPolicy = stepData.cancellationPolicy;
-    application.bookingMode = stepData.bookingMode;
-  } else if (step === 7) {
-    application.payout = stepData.payout;
-    application.agreement = stepData.agreement;
+    const six = parsed.data as z.infer<(typeof stepSchemas)[6]>;
+    application.amenities = six.amenities;
+    application.cancellationPolicy = six.cancellationPolicy;
+    application.bookingMode = six.bookingMode;
   } else {
-    throw new BadRequestError('Invalid wizard step');
+    const seven = parsed.data as z.infer<(typeof stepSchemas)[7]>;
+    application.payout = seven.payout;
+    application.agreement = {
+      commissionPercent: seven.agreement.commissionPercent,
+      settlementCycle: seven.agreement.settlementCycle,
+      acceptedAt: new Date(),
+      acceptedIp: acceptedIp ?? 'unknown',
+    };
   }
 
+  /**
+   * Never moves backwards: editing step 2 after reaching step 6 must not send
+   * the owner back through four screens they already finished.
+   */
   application.currentStep = Math.max(application.currentStep, step);
   await application.save();
   return application;

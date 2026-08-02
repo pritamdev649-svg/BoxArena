@@ -91,7 +91,7 @@ export default async function ArenasPage() {
 function FilterBar() {
   return (
     <div className="mb-6 flex flex-wrap gap-2">
-      {(['allSports', 'cricket', 'football', 'badminton'] as const).map((key, index) => (
+      {(['allSports', 'badminton', 'cricket', 'football'] as const).map((key, index) => (
         <button
           key={key}
           type="button"

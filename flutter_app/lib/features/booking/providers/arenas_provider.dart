@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/services/api_client.dart';
-import 'package:app/core/mock/seed_data.dart';
+import 'package:app/core/models/arena.dart';
 
-final arenasProvider = FutureProvider<List<MockArena>>((ref) async {
+final arenasProvider = FutureProvider<List<Arena>>((ref) async {
   final apiClient = ref.read(apiClientProvider);
   final response = await apiClient.get('/arenas');
   
@@ -17,7 +17,9 @@ final arenasProvider = FutureProvider<List<MockArena>>((ref) async {
     final locationStr = formattedAddress.isNotEmpty ? formattedAddress : "$areaName, Lucknow";
 
     final ratingObj = json['rating'] as Map<String, dynamic>? ?? {};
-    final rating = (ratingObj['average'] as num?)?.toDouble() ?? 4.0;
+    /// 0.0, not 4.0. An unreviewed venue has no rating, and inventing a
+    /// flattering default is the exact thing the review system exists to stop.
+    final rating = (ratingObj['average'] as num?)?.toDouble() ?? 0.0;
     final reviewsCount = (ratingObj['count'] as num?)?.toInt() ?? 0;
 
     final sportsList = json['sportsSupported'] as List<dynamic>? ?? [];
@@ -52,12 +54,12 @@ final arenasProvider = FutureProvider<List<MockArena>>((ref) async {
       basePrice = prices.reduce((a, b) => a < b ? a : b);
     }
 
+    /// Null when the owner has not uploaded one — the widget draws a
+    /// placeholder rather than a stock photo of somebody else's venue.
     final imagesList = json['images'] as List<dynamic>? ?? [];
-    final imageUrl = imagesList.isNotEmpty
-        ? imagesList.first as String
-        : "https://images.unsplash.com/photo-1540747737956-37872404f802?q=80&w=600";
+    final imageUrl = imagesList.isNotEmpty ? imagesList.first as String : null;
 
-    return MockArena(
+    return Arena(
       publicId: publicId,
       name: name,
       location: locationStr,

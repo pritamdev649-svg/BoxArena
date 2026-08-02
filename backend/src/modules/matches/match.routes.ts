@@ -307,3 +307,32 @@ matchRoutes.post('/:publicId/official/no-show', async (req, res, next) => {
     next(err);
   }
 });
+
+/**
+ * A player contests a settled or pending result (§7).
+ *
+ * Admins could already resolve disputes; nobody could raise one, which meant
+ * the queue could only ever be filled by a score mismatch the system detected
+ * itself. A player who believes the result is wrong now has a route.
+ */
+const disputeSchema = z
+  .object({
+    reason: z.enum(['score_mismatch', 'no_show', 'foul_play', 'venue_issue', 'other']),
+    description: z.string().max(1000).optional(),
+    evidenceUrls: z.array(z.string().url()).max(5).optional(),
+  })
+  .strict();
+
+matchRoutes.post('/:publicId/dispute', validate({ body: disputeSchema }), async (req, res, next) => {
+  try {
+    ok(res, await service.raisePlayerDispute({
+      user: currentUser(req),
+      matchPublicId: String(req.params.publicId),
+      reason: req.body.reason,
+      description: req.body.description,
+      evidenceUrls: req.body.evidenceUrls,
+    }));
+  } catch (err) {
+    next(err);
+  }
+});

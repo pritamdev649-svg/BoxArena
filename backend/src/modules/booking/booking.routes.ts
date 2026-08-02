@@ -63,9 +63,16 @@ bookingRoutes.post('/', validate({ body: confirmSchema }), async (req, res, next
 
 bookingRoutes.get('/', async (req, res, next) => {
   try {
+    /**
+     * Venue and court are populated because every caller needs them: a list of
+     * bookings that says only "court 65f2…" is unreadable, and making each
+     * client fetch the arena per row is a request per booking.
+     */
     const bookings = await BookingModel.find({ bookerId: currentUser(req)._id })
       .sort({ startAt: -1 })
       .limit(50)
+      .populate('arenaId', 'name slug publicId')
+      .populate('courtId', 'name sport')
       .lean();
     ok(res, bookings);
   } catch (err) {

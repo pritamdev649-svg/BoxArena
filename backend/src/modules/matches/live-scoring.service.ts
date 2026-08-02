@@ -11,7 +11,6 @@ import {
   TeamModel,
   UserModel,
   PointOutcome,
-  SportType,
   type IMatch,
   type IMatchPoint,
   type IUser,
@@ -19,6 +18,7 @@ import {
 } from '../../models/index.js';
 import { withTransaction } from '../../shared/config/db.js';
 import { env } from '../../shared/config/env.js';
+import { isLiveScorable } from '../../shared/config/sports.js';
 import {
   BadRequestError,
   ConflictError,
@@ -52,11 +52,19 @@ import { broadcastToUsers } from '../../shared/services/socket.js';
  *    than merely rejected.
  */
 
-/** Badminton only for now; other sports keep the dual-captain flow. */
+/**
+ * Only sports with a rally engine can be scored live.
+ *
+ * Badminton is the reference implementation. Cricket is in the MVP for
+ * booking and challenges but its scoring engine is on hold, so a cricket match
+ * keeps the dual-captain flow rather than getting a half-built scoreboard that
+ * settles money.
+ */
 function assertScorableSport(match: IMatch): void {
-  if (match.sport !== SportType.BADMINTON) {
-    throw new BadRequestError('Live scoring currently supports badminton only');
-  }
+  if (isLiveScorable(match.sport)) return;
+  throw new BadRequestError(
+    `Live scoring is not available for ${match.sport} yet — both captains submit the score instead.`,
+  );
 }
 
 /**

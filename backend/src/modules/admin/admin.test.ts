@@ -178,12 +178,20 @@ describe('2. Partner Onboarding & Wizard Flow', () => {
     await updatePartnerApplicationStep(ownerUser._id as Types.ObjectId, 1, {
       name: 'Verma Turf Gomti Nagar',
       description: 'Prime cricket arena',
-      contactPhone: '+919777777777',
-      images: ['https://example.com/img.png'],
+      contactPhone: '9777777777',
+      images: [
+        'https://example.com/img1.png',
+        'https://example.com/img2.png',
+        'https://example.com/img3.png',
+      ],
     });
 
     await updatePartnerApplicationStep(ownerUser._id as Types.ObjectId, 2, {
-      address: { line1: 'Gomti Nagar', city: 'Lucknow' },
+      address: {
+        formattedAddress: 'Gomti Nagar, Lucknow',
+        areaName: 'Gomti Nagar',
+        city: 'Lucknow',
+      },
       coordinates: [80.95, 26.85],
       pinConfirmedByOwner: true,
     });
@@ -193,7 +201,13 @@ describe('2. Partner Onboarding & Wizard Flow', () => {
     ]);
 
     await updatePartnerApplicationStep(ownerUser._id as Types.ObjectId, 4, [
+      { dayOfWeek: 0, openTime: '06:00', closeTime: '22:00', isClosed: false },
       { dayOfWeek: 1, openTime: '06:00', closeTime: '22:00', isClosed: false },
+      { dayOfWeek: 2, openTime: '06:00', closeTime: '22:00', isClosed: false },
+      { dayOfWeek: 3, openTime: '06:00', closeTime: '22:00', isClosed: false },
+      { dayOfWeek: 4, openTime: '06:00', closeTime: '22:00', isClosed: false },
+      { dayOfWeek: 5, openTime: '06:00', closeTime: '22:00', isClosed: false },
+      { dayOfWeek: 6, openTime: '06:00', closeTime: '22:00', isClosed: false },
     ]);
 
     await updatePartnerApplicationStep(ownerUser._id as Types.ObjectId, 5, []);
@@ -205,8 +219,16 @@ describe('2. Partner Onboarding & Wizard Flow', () => {
     });
 
     await updatePartnerApplicationStep(ownerUser._id as Types.ObjectId, 7, {
-      payout: { upiId: 'verma@upi' },
-      agreement: { commissionPercent: 10, settlementCycle: 'weekly', acceptedAt: new Date(), acceptedIp: '127.0.0.1' },
+      payout: {
+        accountHolderName: 'Verma Turf',
+        pan: 'ABCDE1234F',
+        vpa: 'verma@upi',
+      },
+      agreement: {
+        commissionPercent: 10,
+        settlementCycle: 'weekly',
+        acceptedTerms: true,
+      },
     });
 
     // 4. Submit application

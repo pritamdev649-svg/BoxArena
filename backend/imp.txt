@@ -17,3 +17,54 @@ Farhan Ahmed (Ahmed Turf Park):
 Phone Number: 9830000002 (input on screen) / +919830000002
 Dev OTP: 123456
 18:46
+
+
+
+
+
+/////////////////
+
+Credentials
+OTP is 123456 for every account (dev mode).
+
+Role	Phone	Use for
+Official — verified	9830000001	Scoring, can settle prize money alone
+Official — team-added	9830000002	Scoring, but result needs both captains
+Your official	7832433243	I just verified this profile so you can test the payout path
+Player / captain A	9820000001	Captain of Smash Bros — confirm results, accept challenges
+Player / captain B	9820000002	Captain of Net Ninjas
+Venue owner	9810000001	Courts & pricing, settlements, photos
+Ops / admin	9999999999	Verify officials, disputes
+Test URLs
+Live scoring — both reset to scheduled, logs wiped:
+
+URL	Sign in as	What it tests
+/score/mch_dmS4GtEfpuxC	9830000001	Singles — court, umpire call, outcome tags, settles on confirm
+/score/mch_2NN55WVsT7jD	9830000001	Doubles — four-cell court, pair rotation
+/score/mch_uuJpJwBvjBts	9830000002	Team-added official — confirm parks it for captains
+Officials marketplace:
+
+URL	Sign in as
+/officials	anyone — the pitch page (also in the footer)
+/officials/register	any player
+/matches/mch_uuJpJwBvjBts/official	9820000001 — browse, propose, confirm, collect fee
+/matches/mch_uuJpJwBvjBts/confirm	9820000001 then 9820000002 — agree or dispute
+Money screens:
+
+/challenges/chl_jEE7YJteDTBB — sign in as 9820000002.
+
+I set the entry fee deliberately below break-even so you can see MM2 working. With a ₹400 court and ₹30 entry, the quote returns:
+
+
+perTeam ₹1,150   netPool ₹900   ifWin −₹250   ifLose −₹1,150
+suggested minimum entry ₹812.50   lowProfit: true
+So the warning fires and tells you the break-even figure. The Accept button stays disabled until you tick the box.
+
+Worth trying in order
+Doubles rotation — score a few points and watch: the serving pair swaps cells only when it wins on its own serve; the receiving pair never moves.
+Deuce — get to 20-20, tap once. Should show 21-20 and keep going.
+Undo across a game — win a game, undo immediately. It reopens at 20-x and the set row disappears.
+Two devices — open the same /score/... in two browsers as the same official. Points tapped in one should appear in the other (LS4, web only).
+The team-added branch — score match B to completion as 9830000002, confirm, then switch to 9820000001 → /matches/.../confirm → agree, then 9820000002 → agree. Money moves on the second agreement.
+Not testable on mobile
+Flutter has the scoreboard, official registra

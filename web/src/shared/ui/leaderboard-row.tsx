@@ -18,7 +18,8 @@ export function LeaderboardRow({
   form,
   className,
 }: {
-  rank: number;
+  /** Null for a player with no completed matches — listed, but not ranked. */
+  rank: number | null;
   name: string;
   areaName: string;
   eloRating: number;
@@ -30,15 +31,7 @@ export function LeaderboardRow({
 }) {
   return (
     <div className={cn('flex items-center gap-3 py-3', className)}>
-      {/* Gold for the podium — the one place rank earns colour. */}
-      <span
-        className={cn(
-          'tabular w-7 shrink-0 text-right text-sm font-semibold',
-          rank <= 3 ? 'text-gold' : 'text-ink-muted',
-        )}
-      >
-        {rank}
-      </span>
+      <RankCell rank={rank} />
 
       <div className="min-w-0 flex-1">
         <p className="text-ink truncate text-sm font-medium">{name}</p>
@@ -88,5 +81,21 @@ function FormPills({ results }: { results: FormResult[] }) {
         </span>
       ))}
     </div>
+  );
+}
+
+/** Gold for the podium — the one place rank earns colour. */
+function RankCell({ rank }: { rank: number | null }) {
+  return (
+    <span
+      className={cn(
+        'tabular w-7 shrink-0 text-right text-sm font-semibold',
+        rank !== null && rank <= 3 ? 'text-gold' : 'text-ink-muted',
+      )}
+      /** An unranked player gets an em dash, never a borrowed position. */
+      title={rank === null ? t('leaderboard.unranked') : undefined}
+    >
+      {rank ?? '—'}
+    </span>
   );
 }

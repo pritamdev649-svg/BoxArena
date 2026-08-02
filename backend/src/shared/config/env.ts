@@ -18,6 +18,14 @@ const bool = (defaultValue: boolean) =>
 const int = (defaultValue: number) =>
   z.coerce.number().int().optional().default(defaultValue);
 
+/** Comma-separated list, trimmed and emptied of blanks. */
+const csv = (defaultValue: string) =>
+  z
+    .string()
+    .optional()
+    .default(defaultValue)
+    .transform((value) => value.split(',').map((part) => part.trim()).filter(Boolean));
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
   PORT: int(5000),
@@ -54,6 +62,12 @@ const schema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   ENABLE_MOCK_PAYMENTS: bool(true),
+  /**
+   * Withdrawals move real money out and need a payout provider plus a
+   * reviewed queue. Off by default so the route exists and is testable
+   * without being reachable in an environment that cannot honour it.
+   */
+  ENABLE_WITHDRAWALS: bool(false),
 
   /**
    * Cloudinary. Uploads are SIGNED server-side — the api_secret never reaches
@@ -68,6 +82,27 @@ const schema = z.object({
 
   PLATFORM_COMMISSION_PERCENT: int(10),
   MIN_ENTRY_FEE_PAISE: int(0),
+  /**
+   * Sports a VENUE may list and a player may book.
+   *
+   * Deliberately everything: a venue owner sells the courts they actually
+   * have, and telling a turf owner they cannot list their football pitch
+   * because of our competitive scope would be absurd.
+   */
+  BOOKABLE_SPORTS: csv('badminton,cricket,football'),
+  /**
+   * Sports a COMPETITIVE CHALLENGE can be posted in.
+   *
+   * Badminton only for now. Booking a cricket pitch is fine; staking money on
+   * a cricket result is not, because nothing verifies that result to the
+   * standard the prize model needs.
+   */
+  CHALLENGE_SPORTS: csv('badminton'),
+  /**
+   * Sports an official can score rally-by-rally. Badminton is the reference
+   * implementation; cricket's engine (balls/overs) is deliberately on hold.
+   */
+  LIVE_SCORING_SPORTS: csv('badminton'),
   MAX_ENTRY_FEE_PAISE: int(500_000),
   /**
    * Question Q6, and a LEGAL decision rather than an engineering one.

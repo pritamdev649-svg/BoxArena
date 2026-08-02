@@ -6,6 +6,15 @@ class ApiRoutes {
   static const String topupOrder = '/wallet/topup/order';
   static const String topupVerify = '/wallet/topup/verify';
   static const String challenges = '/challenges';
+  static const String arenas = '/arenas';
+  static const String myBookings = '/bookings';
+  static const String myTeams = '/teams/mine';
+  static const String teams = '/teams';
+  static String arenaMatches(String publicId) => '/arenas/$publicId/matches';
+  static String arenaStats(String publicId) => '/arenas/$publicId/stats';
+  static String publicPlayer(String publicId) => '/public/players/$publicId';
+  static String leaderboard(String sport, String format) =>
+      '/leaderboards?sport=$sport&format=$format&limit=10';
 
   // Live scoring — the official's scoreboard.
   static String matchLive(String id) => '/matches/$id/live';

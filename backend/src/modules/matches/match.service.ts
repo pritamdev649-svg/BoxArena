@@ -319,6 +319,73 @@ async function raiseDispute(
 }
 
 /**
+ * A participant raises a dispute.
+ *
+ * Deliberately allowed on a VERIFIED match as well as a pending one: the most
+ * common real complaint is "that result was settled and it was wrong", and a
+ * product that only accepts disputes before settlement has no answer for it.
+ * The dispute window bounds how long that stays true.
+ *
+ * Raising does not claw money back. Ops decide, and an admin resolution is the
+ * only thing that reverses a settlement — see admin.service.
+ */
+export async function raisePlayerDispute(input: {
+  user: IUser;
+  matchPublicId: string;
+  reason: 'score_mismatch' | 'no_show' | 'foul_play' | 'venue_issue' | 'other';
+  description?: string;
+  evidenceUrls?: string[];
+}): Promise<{ disputeId: string; status: string }> {
+  return withTransaction(async (session) => {
+    const match = await MatchModel.findOne({ publicId: input.matchPublicId }).session(session);
+    if (!match) throw new NotFoundError('Match');
+
+    /** Participants only — a stranger must not be able to freeze a payout. */
+    await resolveSide(match, input.user, session);
+
+    if (match.disputeId) {
+      throw new ConflictError('CONFLICT', 'This match is already disputed');
+    }
+
+    const openable: MatchStatus[] = [
+      MatchStatus.PENDING_CONFIRMATION,
+      MatchStatus.PENDING_SCORES,
+      MatchStatus.VERIFIED,
+      MatchStatus.IN_PROGRESS,
+    ];
+    if (!openable.includes(match.status)) {
+      throw new ConflictError('CONFLICT', `A ${match.status} match cannot be disputed`);
+    }
+
+    const [dispute] = await DisputeModel.create(
+      [
+        {
+          matchId: match._id,
+          raisedByUserId: input.user._id,
+          reason: input.reason,
+          ...(input.description ? { description: input.description } : {}),
+          evidence: (input.evidenceUrls ?? []).map((url) => ({
+            url,
+            uploadedByUserId: input.user._id,
+            uploadedAt: new Date(),
+          })),
+          status: 'open',
+          slaDueAt: new Date(Date.now() + env.DISPUTE_SLA_HOURS * 3_600_000),
+        },
+      ],
+      { session },
+    );
+    if (!dispute) throw new Error('Dispute creation returned nothing');
+
+    match.disputeId = dispute._id as Types.ObjectId;
+    match.status = MatchStatus.DISPUTED;
+    await match.save({ session });
+
+    return { disputeId: String(dispute._id), status: match.status };
+  });
+}
+
+/**
  * A captain accepts — or contests — a result somebody else proposed.
  *
  * This is the branch for an official who cannot trigger payout: a team's own

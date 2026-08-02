@@ -1,85 +1,170 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/app_theme.dart';
-import 'package:app/core/mock/seed_data.dart';
+import 'package:app/core/models/challenge.dart';
 import 'package:app/features/wallet/providers/wallet_provider.dart';
 import 'package:app/features/matchmaking/providers/challenges_provider.dart';
 import 'package:app/core/widgets/app_button.dart';
 import 'package:app/core/utils/app_snackbar.dart';
+import 'package:app/features/matchmaking/providers/public_player_provider.dart';
 
-class PlayerDetailStats {
-  final String name;
-  final String sport;
-  final String skillLevel;
-  final int elo;
-  final int matchesPlayed;
-  final int matchesWon;
-  final String handOrBat;
-  final String formatOrBowl;
-  final String? cricHeroes;
 
-  PlayerDetailStats({
-    required this.name,
-    required this.sport,
-    required this.skillLevel,
-    required this.elo,
-    required this.matchesPlayed,
-    required this.matchesWon,
-    required this.handOrBat,
-    required this.formatOrBowl,
-    this.cricHeroes,
+/// A player's profile, opened from the squad chip.
+///
+/// Fetched from `GET /public/players/:publicId`. The previous version derived
+/// Elo, matches played and win rate from `name.hashCode` — a number that looks
+/// like a record, changes if the player renames themselves, and describes
+/// nobody.
+class _PlayerProfileSheet extends ConsumerWidget {
+  final String publicId;
+  final String fallbackName;
+
+  const _PlayerProfileSheet({
+    required this.publicId,
+    required this.fallbackName,
   });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(publicPlayerProvider(publicId));
+
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: profile.when(
+        loading: () => const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => SizedBox(
+          height: 120,
+          child: Center(
+            child: Text(
+              'Could not load $fallbackName\'s profile.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+        ),
+        data: (player) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.info,
+                  child: Text(
+                    player.fullName.characters.first.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        player.fullName,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (player.homeAreaName != null)
+                        Text(
+                          player.homeAreaName!,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if (!player.hasRecord)
+              Text(
+                'No completed matches yet, so there is no record to show.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatItem(
+                      label: 'ELO',
+                      value: '${player.eloRating}',
+                      color: AppColors.gold,
+                    ),
+                  ),
+                  Expanded(
+                    child: _StatItem(
+                      label: 'PLAYED',
+                      value: '${player.matchesPlayed}',
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Expanded(
+                    child: _StatItem(
+                      label: 'WIN RATE',
+                      value:
+                          '${((player.winRate ?? 0) * 100).toStringAsFixed(0)}%',
+                      color: AppColors.win,
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatItem({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: AppTheme.label),
+      ],
+    );
+  }
 }
 
 class ChallengeDetailScreen extends ConsumerWidget {
-  final MockChallenge challenge;
+  final Challenge challenge;
 
   const ChallengeDetailScreen({super.key, required this.challenge});
 
-  PlayerDetailStats _getMockPlayerStats(
-    String name,
-    String sport,
-    String skillLevel,
-  ) {
-    final isCricket = sport.toLowerCase().contains('cricket');
-    final matches = (name.hashCode.abs() % 25) + 15;
-    final won = (matches * 0.65).toInt();
-    final elo = 1000 + (name.hashCode.abs() % 400);
-
-    return PlayerDetailStats(
-      name: name,
-      sport: sport,
-      skillLevel: skillLevel,
-      elo: elo,
-      matchesPlayed: matches,
-      matchesWon: won,
-      handOrBat: isCricket ? "Right-hand bat" : "Right-handed",
-      formatOrBowl: isCricket ? "Spin bowler" : "Both formats",
-      cricHeroes: isCricket ? name.toLowerCase().replaceAll(' ', '_') : null,
-    );
-  }
-
-  List<String> _getMockTeammates(String captain, String sport, String format) {
-    if (format.contains('Singles') || format == '1v1') return [];
-    if (format.contains('Doubles') || format == '2v2') {
-      return ['${captain.split(" ").first}\'s Partner'];
-    }
-    final count = format.toLowerCase().contains('6v6')
-        ? 5
-        : (format.toLowerCase().contains('8v8') ? 7 : 10);
-    return List.generate(count, (index) => 'Teammate #${index + 1}');
-  }
-
-  void _showPlayerProfileModal(
-    BuildContext context,
-    String playerName,
-    String sport,
-    String skillLevel,
-  ) {
-    final stats = _getMockPlayerStats(playerName, sport, skillLevel);
-    final winRate = ((stats.matchesWon / stats.matchesPlayed) * 100)
-        .toStringAsFixed(0);
-    final isCricket = sport.toLowerCase().contains('cricket');
+  void _showPlayerProfile(BuildContext context, String publicId, String name) {
+    if (publicId.isEmpty) return;
 
     showModalBottomSheet(
       context: context,
@@ -87,167 +172,11 @@ class ChallengeDetailScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderSubtle,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: isCricket
-                        ? AppColors.sportCricket
-                        : AppColors.info,
-                    child: Text(
-                      stats.name.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          stats.name.toUpperCase(),
-                          style: AppTheme.displayStyle(fontSize: 15),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          sport,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgInset,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.flash_on_rounded,
-                          color: AppColors.gold,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'ELO ${stats.elo}',
-                          style: AppTheme.tabularStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStatItem(
-                    'PLAYED',
-                    stats.matchesPlayed.toString(),
-                    AppColors.textPrimary,
-                  ),
-                  _buildStatItem(
-                    'WON',
-                    stats.matchesWon.toString(),
-                    AppColors.win,
-                  ),
-                  _buildStatItem('WIN RATE', '$winRate%', AppColors.gold),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Divider(color: AppColors.borderSubtle),
-              const SizedBox(height: 16),
-
-              Text('GAMEPLAY SETTINGS', style: AppTheme.label),
-              const SizedBox(height: 8),
-              _buildDetailRow('Hand Preference', stats.handOrBat),
-              _buildDetailRow('Playing Format', stats.formatOrBowl),
-              if (stats.cricHeroes != null)
-                _buildDetailRow(
-                  'CricHeroes Link',
-                  '@${stats.cricHeroes}',
-                  valueColor: AppColors.win,
-                ),
-
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.volt500,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: const StadiumBorder(),
-                ),
-                child: const Text(
-                  'CLOSE PROFILE',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (_) =>
+          _PlayerProfileSheet(publicId: publicId, fallbackName: name),
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: AppTheme.tabularStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
 
   void _acceptChallenge(BuildContext context, WidgetRef ref) {
     final walletState = ref.read(walletProvider);
@@ -342,32 +271,27 @@ class ChallengeDetailScreen extends ConsumerWidget {
             onPressed: () {
               Navigator.pop(context);
 
-              final debited = ref
-                  .read(walletProvider.notifier)
-                  .debitWallet(challenge.entryFeePaise);
-              if (debited) {
-                ref
-                    .read(challengesProvider.notifier)
-                    .acceptChallenge(challenge.publicId)
-                    .then((success) {
-                  if (success) {
-                    AppSnackBar.showSuccess(
-                      context,
-                      'Challenge matched! Entry fee locked in escrow. Match at ${challenge.time}.',
-                    );
-                    Future.delayed(Duration.zero, () {
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                      }
-                    });
-                  } else {
-                    AppSnackBar.showError(
-                      context,
-                      'Failed to match challenge.',
-                    );
-                  }
-                });
-              }
+              /// The SERVER moves the money — accepting locks the entry fee in
+              /// escrow. Debiting locally first meant the app showed a balance
+              /// the backend disagreed with whenever accept failed.
+              ref
+                  .read(challengesProvider.notifier)
+                  .acceptChallenge(challenge.publicId)
+                  .then((success) {
+                if (!context.mounted) return;
+
+                if (success) {
+                  ref.read(walletProvider.notifier).refreshWallet();
+                  AppSnackBar.showSuccess(
+                    context,
+                    'Challenge matched. Entry fee locked in escrow. '
+                    'Match at ${challenge.timeLabel}.',
+                  );
+                  Navigator.pop(context);
+                } else {
+                  AppSnackBar.showError(context, 'Failed to match challenge.');
+                }
+              });
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.volt500),
             child: const Text(
@@ -386,18 +310,11 @@ class ChallengeDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isCricket = challenge.sport.toLowerCase().contains('cricket');
-    final format =
-        challenge.teamFormat ?? (isCricket ? '6v6' : 'Doubles (2v2)');
-    final squad =
-        challenge.squadPlayers ??
-        [
-          challenge.creatorCaptainName,
-          ..._getMockTeammates(
-            challenge.creatorCaptainName,
-            challenge.sport,
-            format,
-          ),
-        ];
+    final format = challenge.teamFormat ?? (isCricket ? '6v6' : 'doubles');
+    /// Only the captain is known here — the feed returns the team name and its
+    /// captain, not the roster. Listing invented teammates alongside a real
+    /// captain made the whole card look made up.
+    final squad = [challenge.creatorCaptainName];
 
     return Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -500,12 +417,12 @@ class ChallengeDetailScreen extends ConsumerWidget {
                   _buildIconDetailRow(
                     Icons.schedule_rounded,
                     'Time slot',
-                    challenge.time,
+                    challenge.timeLabel,
                   ),
                   _buildIconDetailRow(
                     Icons.trending_up_rounded,
                     'Min Skill Required',
-                    challenge.skillLevel.toUpperCase(),
+                    (challenge.skillLevel ?? 'any').toUpperCase(),
                     valueColor: challenge.skillLevel == 'advanced'
                         ? AppColors.loss
                         : AppColors.win,
@@ -568,11 +485,10 @@ class ChallengeDetailScreen extends ConsumerWidget {
                     children: squad.map((player) {
                       final isCaptain = player == challenge.creatorCaptainName;
                       return GestureDetector(
-                        onTap: () => _showPlayerProfileModal(
+                        onTap: () => _showPlayerProfile(
                           context,
+                          challenge.creatorCaptainPublicId,
                           player,
-                          challenge.sport,
-                          challenge.skillLevel,
                         ),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -670,29 +586,4 @@ class ChallengeDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                color: valueColor ?? AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

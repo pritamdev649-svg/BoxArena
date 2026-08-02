@@ -18,6 +18,7 @@ const SECTIONS: PanelNavSection[] = [
       { href: '/admin', labelKey: 'nav.adminOverview', prefixMatch: false },
       { href: '/admin/applications', labelKey: 'nav.adminApplications' },
       { href: '/admin/disputes', labelKey: 'nav.adminDisputes' },
+      { href: '/admin/withdrawals', labelKey: 'nav.adminWithdrawals' },
     ],
   },
   {

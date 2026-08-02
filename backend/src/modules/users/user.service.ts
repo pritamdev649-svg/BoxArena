@@ -29,7 +29,6 @@ export async function updateProfile(userId: Types.ObjectId, updateData: Partial<
     throw new NotFoundError('User');
   }
 
-  // Update allowed profile fields
   const allowedFields: (keyof IUser)[] = [
     'fullName',
     'avatarUrl',
@@ -73,17 +72,13 @@ export async function upsertFcmToken(
   const user = await UserModel.findById(userId);
   if (!user) throw new NotFoundError('User');
 
-  // Remove the token from any other place or user to avoid sending double notifications
   await UserModel.updateMany(
     { 'fcmTokens.token': token },
     { $pull: { fcmTokens: { token } } }
   );
 
-  // Re-fetch user to make sure we don't have stale data
   const updatedUser = await UserModel.findById(userId);
   if (!updatedUser) throw new NotFoundError('User');
-
-  // Pull existing token if it was already registered to this user to update it
   updatedUser.fcmTokens = updatedUser.fcmTokens.filter((t) => t.token !== token);
   updatedUser.fcmTokens.push({ token, platform, updatedAt: new Date() });
 
@@ -197,17 +192,12 @@ export async function deleteUser(userId: Types.ObjectId) {
 
   const origPhone = user.phoneNumber;
 
-  // Anonymize user details
   user.fullName = 'Deleted User';
   user.avatarUrl = '';
-  user.status = AccountStatus.SUSPENDED; // mark suspended/inactive
+  user.status = AccountStatus.SUSPENDED;
   user.deletedAt = new Date();
   user.fcmTokens = [];
-  
-  // Set the phone number to a unique hash to free up the original phone number for registration
   user.phoneNumber = `deleted_${sha256(origPhone)}`;
-
-  // Save by bypassing schema validators to avoid regex fail on hashed phone
   await user.save({ validateBeforeSave: false });
 
   return { success: true };

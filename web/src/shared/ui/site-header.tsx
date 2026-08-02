@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
-import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, User, Wallet as WalletIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { isPanelRoute } from '@/shared/lib/panel-routes';
 import { signOut } from '@/shared/lib/sign-out';
@@ -181,6 +181,9 @@ function ProfileActions({ user }: { user: UserMe }) {
 
   return (
     <div className="flex flex-col gap-1 pt-2">
+      <MenuLink href="/profile" icon={User} label={t('player.yourProfile')} />
+      <MenuLink href="/wallet" icon={WalletIcon} label={t('wallet.title')} />
+
       {panel ? (
         <Button
           variant="ghost"
@@ -296,3 +299,23 @@ function MenuToggle({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => voi
   );
 }
 
+
+/** One row of the account menu. */
+function MenuLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: typeof User;
+  label: string;
+}) {
+  return (
+    <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal" asChild>
+      <Link href={href}>
+        <Icon className="mr-2 size-3.5" />
+        {label}
+      </Link>
+    </Button>
+  );
+}

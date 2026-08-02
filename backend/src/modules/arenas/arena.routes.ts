@@ -122,6 +122,30 @@ const createReviewSchema = z
   })
   .strict();
 
+/** Counted live from bookings and matches — see `getArenaStats`. */
+arenaRoutes.get('/:publicId/stats', async (req, res, next) => {
+  try {
+    ok(res, await service.getArenaStatsByPublicId(String(req.params.publicId)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Settled matches played here.
+ *
+ * Exists so a venue page can show a real match history instead of a
+ * plausible-looking one — the mobile app was generating its own.
+ */
+arenaRoutes.get('/:publicId/matches', async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit ?? 10), 50);
+    ok(res, await service.getArenaMatchHistory(String(req.params.publicId), limit));
+  } catch (err) {
+    next(err);
+  }
+});
+
 arenaRoutes.get('/:publicId/reviews', validate({ query: reviewsQuery }), async (req, res, next) => {
   try {
     const q = validatedQuery<{ limit?: number; after?: string }>(req);

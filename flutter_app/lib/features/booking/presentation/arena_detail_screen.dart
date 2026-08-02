@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/app_theme.dart';
-import 'package:app/core/mock/seed_data.dart';
+import 'package:app/core/models/arena.dart';
+import 'package:app/core/widgets/arena_image.dart';
 import 'package:app/core/widgets/app_loader.dart';
 import 'package:app/core/utils/app_snackbar.dart';
 import 'arena_info_screen.dart';
 import 'fullscreen_table_screen.dart';
 
 class ArenaDetailScreen extends StatefulWidget {
-  final MockArena arena;
+  final Arena arena;
   const ArenaDetailScreen({super.key, required this.arena});
 
   @override
@@ -282,17 +283,10 @@ class _ArenaDetailScreenState extends State<ArenaDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Banner & Quick stats
-          Image.network(
-            widget.arena.imageUrl,
+          ArenaImage(
+            url: widget.arena.imageUrl,
             height: 180,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              height: 180,
-              width: double.infinity,
-              color: AppColors.bgInset,
-              child: Icon(Icons.image_not_supported_rounded, size: 48, color: AppColors.textMuted),
-            ),
+            borderRadius: BorderRadius.zero,
           ),
           
           // Sport Selector

@@ -5,6 +5,7 @@ import { authenticate, currentUser, requireRole } from '../../shared/middlewares
 import { validate, validatedQuery } from '../../shared/middlewares/validate.js';
 import { ok } from '../../shared/utils/response.js';
 import * as service from './admin.service.js';
+import * as withdrawal from '../wallet/withdrawal.service.js';
 
 export const adminRoutes = Router();
 
@@ -272,3 +273,42 @@ adminRoutes.get('/audit-logs', async (_req, res, next) => {
     next(err);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Withdrawal queue (F5.3)
+//
+// Money leaving the platform is the one flow that always gets a human.
+// ---------------------------------------------------------------------------
+
+const reviewWithdrawalSchema = z
+  .object({
+    decision: z.enum(['approve', 'reject']),
+    reason: z.string().max(500).optional(),
+  })
+  .strict();
+
+adminRoutes.get('/withdrawals', async (req, res, next) => {
+  try {
+    const status = req.query.status ? String(req.query.status) : undefined;
+    ok(res, await withdrawal.listWithdrawalQueue(status as never));
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRoutes.post(
+  '/withdrawals/:publicId/review',
+  validate({ body: reviewWithdrawalSchema }),
+  async (req, res, next) => {
+    try {
+      ok(res, await withdrawal.reviewWithdrawal({
+        admin: currentUser(req),
+        withdrawalPublicId: String(req.params.publicId),
+        decision: req.body.decision,
+        reason: req.body.reason,
+      }));
+    } catch (err) {
+      next(err);
+    }
+  },
+);

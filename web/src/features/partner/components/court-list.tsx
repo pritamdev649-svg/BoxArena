@@ -27,7 +27,12 @@ export interface OwnerCourt {
   basePricePerHourPaise: number;
 }
 
-const SPORTS = ['cricket', 'football', 'badminton'] as const;
+/**
+ * Every sport a venue can sell — deliberately NOT narrowed to the competitive
+ * scope. A turf owner lists the pitch they own; whether players can stake on a
+ * football result is a separate question, enforced at challenge creation.
+ */
+const SPORTS = ['badminton', 'cricket', 'football'] as const;
 
 export function CourtList({
   arenaPublicId,

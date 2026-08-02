@@ -144,9 +144,15 @@ function Totals({
       </dl>
 
       {shortfall > 0 ? (
-        <p className="border-loss/40 bg-loss/10 text-loss rounded-control mt-4 border p-3 text-sm">
-          {t('checkout.shortfall')} <MoneyText paise={shortfall} className="font-semibold" />
-        </p>
+        <div className="border-loss/40 bg-loss/10 rounded-control mt-4 border p-3 text-sm">
+          <p className="text-loss">
+            {t('checkout.shortfall')} <MoneyText paise={shortfall} className="font-semibold" />
+          </p>
+          {/* Hitting the wall must offer the way out, not just name it. */}
+          <Link href="/wallet" className="text-volt-ink mt-1 inline-block text-xs underline">
+            {t('wallet.topUpCta')}
+          </Link>
+        </div>
       ) : null}
     </>
   );

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/app_theme.dart';
-import 'package:app/core/mock/seed_data.dart';
+import 'package:app/core/models/arena.dart';
+import 'package:app/core/widgets/arena_image.dart';
+import 'package:app/core/models/leaderboard_row.dart';
+import 'package:app/features/matchmaking/providers/challenges_provider.dart';
+import 'package:app/features/matchmaking/providers/leaderboard_provider.dart';
 import 'package:app/core/utils/app_snackbar.dart';
 import 'package:app/features/booking/providers/arenas_provider.dart';
 import 'arena_detail_screen.dart';
@@ -33,7 +37,7 @@ class _ArenaListScreenState extends ConsumerState<ArenaListScreen> {
     "Indira Nagar",
   ];
 
-  List<MockArena> _filteredArenas(List<MockArena> arenas) {
+  List<Arena> _filteredArenas(List<Arena> arenas) {
     return arenas.where((arena) {
       final matchesSport =
           _selectedSport == "All" ||
@@ -348,7 +352,7 @@ class _ArenaListScreenState extends ConsumerState<ArenaListScreen> {
     );
   }
 
-  Widget _buildFilteredList(List<MockArena> filtered) {
+  Widget _buildFilteredList(List<Arena> filtered) {
     if (filtered.isEmpty) {
       return Center(
         child: Column(
@@ -379,7 +383,7 @@ class _ArenaListScreenState extends ConsumerState<ArenaListScreen> {
     );
   }
 
-  Widget _buildArenaListItem(MockArena arena) {
+  Widget _buildArenaListItem(Arena arena) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
       decoration: BoxDecoration(
@@ -412,21 +416,10 @@ class _ArenaListScreenState extends ConsumerState<ArenaListScreen> {
               ),
               child: Stack(
                 children: [
-                  Image.network(
-                    arena.imageUrl,
+                  ArenaImage(
+                    url: arena.imageUrl,
                     height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 150,
-                      width: double.infinity,
-                      color: AppColors.bgInset,
-                      child: Icon(
-                        Icons.image_not_supported_rounded,
-                        size: 36,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
+                    borderRadius: BorderRadius.zero,
                   ),
                   // Sport badges
                   Positioned(
@@ -598,10 +591,16 @@ class _ArenaListScreenState extends ConsumerState<ArenaListScreen> {
     );
   }
 
-  Widget _buildDashboard(BuildContext context, List<MockArena> arenas) {
+  Widget _buildDashboard(BuildContext context, List<Arena> arenas) {
     final profile = ref.watch(profileProvider);
     final userElo = profile?.eloRating ?? 1200;
-    final activeChallengesCount = SeedData.challenges.length;
+    /// The real open-challenge count. Was `SeedData.challenges.length` — a
+    /// constant that never moved no matter what was actually happening.
+    final activeChallengesCount = ref
+        .watch(challengesProvider)
+        .challenges
+        .where((challenge) => challenge.isOpen)
+        .length;
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -707,140 +706,132 @@ class _ArenaListScreenState extends ConsumerState<ArenaListScreen> {
     );
   }
 
+  /// The real ladder, badminton singles.
+  ///
+  /// Ranked players only: someone on a starting rating with no matches has not
+  /// earned a place among "top local players", and the API marks them
+  /// unranked precisely so clients do not list them here.
   Widget _buildTopPlayersSection() {
-    final players = SeedData.players;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('TOP LOCAL PLAYERS', style: AppTheme.label),
-              Text(
-                'ACTIVE NOW',
-                style: TextStyle(
-                  color: AppColors.win,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
+    final ladder = ref.watch(leaderboardProvider);
+
+    return ladder.when(
+      loading: () => const SizedBox(height: 96),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (rows) {
+        final ranked = rows.where((row) => !row.isUnranked).toList();
+        if (ranked.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text('TOP LOCAL PLAYERS', style: AppTheme.label),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 96,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                itemCount: ranked.length,
+                itemBuilder: (context, index) => _playerCard(ranked[index]),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          height: 96,
-          margin: const EdgeInsets.only(bottom: 24.0),
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: players.length,
-            itemBuilder: (context, index) {
-              final player = players[index];
-              return Container(
-                width: 170,
-                margin: const EdgeInsets.only(right: 12.0),
-                padding: const EdgeInsets.all(12.0),
-                decoration: BoxDecoration(
-                  color: AppColors.bgSurface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.borderSubtle),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.volt500.withOpacity(0.4),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: CircleAvatar(
-                        radius: 20,
-                        backgroundImage: NetworkImage(player.avatarUrl),
-                        backgroundColor: AppColors.bgInset,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            player.fullName,
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            player.primarySport,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 10,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.voltGlow,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.flash_on_rounded,
-                                  size: 10,
-                                  color: AppColors.volt500,
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '${player.eloRating}',
-                                  style: AppTheme.tabularStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.volt500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildFeaturedArenasSection(List<MockArena> arenas) {
+  Widget _playerCard(LeaderboardRow player) {
+    return Container(
+      width: 170,
+      margin: const EdgeInsets.only(right: 12.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.bgInset,
+            child: Text(
+              player.fullName.characters.first.toUpperCase(),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  player.fullName,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  player.areaName ?? '#${player.rank}',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.voltGlow,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.flash_on_rounded,
+                        size: 10,
+                        color: AppColors.volt500,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${player.eloRating}',
+                        style: AppTheme.tabularStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.volt500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeaturedArenasSection(List<Arena> arenas) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -908,17 +899,10 @@ class _ArenaListScreenState extends ConsumerState<ArenaListScreen> {
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              Image.network(
-                                arena.imageUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: AppColors.bgInset,
-                                  child: Icon(
-                                    Icons.image_not_supported_rounded,
-                                    size: 32,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
+                              ArenaImage(
+                                url: arena.imageUrl,
+                                height: double.infinity,
+                                borderRadius: BorderRadius.zero,
                               ),
                               Positioned(
                                 top: 10,
@@ -1067,7 +1051,15 @@ class _ArenaListScreenState extends ConsumerState<ArenaListScreen> {
   }
 
   Widget _buildRecentChallengesSection() {
-    final challenges = SeedData.challenges;
+    /// The live feed. An empty feed renders nothing rather than four
+    /// evergreen fixtures that were always "tonight".
+    final challenges = ref
+        .watch(challengesProvider)
+        .challenges
+        .where((challenge) => challenge.isOpen)
+        .toList();
+    if (challenges.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

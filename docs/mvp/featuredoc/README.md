@@ -10,6 +10,7 @@ tested but dormant behind a runtime flag until legal and app-store approval. The
 day-one product is **free bookings, teams, scoring, and leaderboards**.
 
 **Last audited:** 2026-08-01 · see [`../../progress.md`](../../progress.md) for the task-level tracker.
+**End-to-end walkthrough, verified against the live stack: [`../../end-to-end-flow.md`](../../end-to-end-flow.md).**
 
 ---
 
@@ -19,11 +20,11 @@ day-one product is **free bookings, teams, scoring, and leaderboards**.
 |---|---|---|---|---|---|---|
 | [01](./01-auth-profiles.md) | Auth & Profiles | §4.1 | ✅ 15/15 | ✅ | 🟡 mock | **Yes** |
 | [02](./02-arena-discovery.md) | Arena Discovery | §4.2 | ✅ 9/9 | 🟡 no map | 🟡 mock | **Yes** |
-| [03](./03-booking-wallet.md) | Booking & Wallet | §4.3 | 🟡 9/12 | 🔴 | 🔴 | **Yes** (booking half) |
+| [03](./03-booking-wallet.md) | Booking & Wallet | §4.3 | 🟡 9/12 | 🟡 booking + top-up; no withdrawal | 🟡 | **Yes** |
 | [04](./04-teams-invites.md) | Teams & Invites | §4.4 | 🟡 7/8 | 🔴 | 🔴 | **Yes** |
 | [05](./05-challenges.md) | Matchmaking Challenges | §4.5 | 🟡 3/6 | 🟡 | 🟡 mock | Flag-gated |
 | [06](./06-results-verification.md) | Results & Dual Verification | §4.6 | 🟡 3/6 | 🟡 admin only | 🟡 mock | **Yes** |
-| [07](./07-leaderboards.md) | Leaderboards | §4.7 | 🔴 0/3 | 🟡 seed data | 🔴 | **Yes** |
+| [07](./07-leaderboards.md) | Leaderboards | §4.7 | ✅ 3/3 | ✅ live | 🔴 | **Yes** |
 | [08](./08-notifications.md) | Notifications | §4.8 | ✅ 3/3 | 🔴 | 🟡 FCM only | **Yes** |
 | [09](./09-partner-panel.md) | Arena Partner Panel | §4.9 | 🟡 18/20 | 🟡 | n/a | **Yes** |
 | [10](./10-admin-panel.md) | Admin Panel | §4.10 | ✅ 22/22 | 🟡 | n/a | **Yes** |
@@ -46,12 +47,12 @@ answered before it can be estimated.
 
 Ordered by what actually stops a free launch:
 
-1. **Leaderboards have no backend at all** (07) — 0 of 3 endpoints. It's a free-tier feature *and* the SEO surface.
-2. **Teams has a complete backend and zero UI** on either platform (04).
-3. **Players cannot raise a dispute** (06) — admins can resolve, but `POST /matches/:id/dispute` doesn't exist.
-4. **Flutter — the designated player surface — never calls the API.** 9 screens read from `seed_data.dart`.
+1. **Teams has a complete backend and zero UI** on either platform (04).
+2. **Players cannot raise a dispute** (06) — admins can resolve, but `POST /matches/:id/dispute` doesn't exist.
+3. **No way to create a challenge from the UI** — `/challenges/new` is still a stub, so the only challenges in the system came from scripts.
+4. **Flutter discovery and matchmaking still read `seed_data.dart`** (8 files). Auth, wallet, profile and live scoring are wired.
 
-**Recently closed:** the slot pipeline (09) — pricing bands now resolve, the 30-day window
+**Recently closed:** leaderboards (07) now have all three §10 endpoints and the web ladder reads them — form is derived from settled matches rather than hand-written, and unplayed players are listed without a rank. Also the slot pipeline (09) — pricing bands now resolve, the 30-day window
 rolls forward on an hourly cron, and owners can manage hours, courts, amenities, and pricing.
 
 ---

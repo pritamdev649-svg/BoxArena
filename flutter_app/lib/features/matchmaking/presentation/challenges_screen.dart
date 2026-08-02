@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/app_theme.dart';
-import 'package:app/core/mock/seed_data.dart';
+import 'package:app/core/models/challenge.dart';
+import 'package:app/features/matchmaking/providers/public_player_provider.dart';
 import 'package:app/features/wallet/providers/wallet_provider.dart';
 import 'package:app/features/matchmaking/providers/challenges_provider.dart';
 import 'package:app/core/widgets/app_button.dart';
@@ -9,29 +10,6 @@ import 'package:app/core/providers/locale_provider.dart';
 import 'package:app/core/utils/app_snackbar.dart';
 import 'challenge_detail_screen.dart';
 
-class HostPlayerDetails {
-  final String name;
-  final String sport;
-  final String skillLevel;
-  final int elo;
-  final int matchesPlayed;
-  final int matchesWon;
-  final String preference1;
-  final String preference2;
-  final String? cricHeroes;
-
-  HostPlayerDetails({
-    required this.name,
-    required this.sport,
-    required this.skillLevel,
-    required this.elo,
-    required this.matchesPlayed,
-    required this.matchesWon,
-    required this.preference1,
-    required this.preference2,
-    this.cricHeroes,
-  });
-}
 
 class ChallengesScreen extends ConsumerStatefulWidget {
   const ChallengesScreen({super.key});
@@ -44,167 +22,29 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
   String _selectedSport = "All";
   final List<String> _sports = ["All", "Badminton", "Box Cricket", "Turf Football"];
 
-  HostPlayerDetails _getMockHostDetails(String name, String sport, String skillLevel) {
-    final isCricket = sport.toLowerCase().contains('cricket');
-    final matches = (name.length * 7) % 35 + 15;
-    final won = (matches * 0.62).toInt();
-    
-    return HostPlayerDetails(
-      name: name,
-      sport: sport,
-      skillLevel: skillLevel,
-      elo: 1100 + (name.length * 15) % 350,
-      matchesPlayed: matches,
-      matchesWon: won,
-      preference1: isCricket ? "Right-hand bat" : "Right-handed",
-      preference2: isCricket ? "Spin bowler" : "Both formats",
-      cricHeroes: isCricket ? name.toLowerCase().replaceAll(' ', '_') : null,
-    );
-  }
+  /// The host's real profile.
+  ///
+  /// Was derived from `name.length` — a "record" that changed if the player
+  /// corrected the spelling of their own name.
+  void _showHostProfileBottomSheet(BuildContext context, Challenge challenge) {
+    if (challenge.creatorCaptainPublicId.isEmpty) return;
 
-
-
-  void _showHostProfileBottomSheet(BuildContext context, MockChallenge challenge) {
-    final details = _getMockHostDetails(challenge.creatorCaptainName, challenge.sport, challenge.skillLevel);
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.bgSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) {
-        final winRate = ((details.matchesWon / details.matchesPlayed) * 100).toStringAsFixed(0);
-        final isCricket = challenge.sport.toLowerCase().contains('cricket');
-
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderSubtle,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: isCricket ? AppColors.sportCricket : AppColors.info,
-                    child: Text(
-                      details.name.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(details.name.toUpperCase(), style: AppTheme.displayStyle(fontSize: 15)),
-                        const SizedBox(height: 2),
-                        Text(challenge.creatorTeamName, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgInset,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.flash_on_rounded, color: AppColors.gold, size: 14),
-                        const SizedBox(width: 4),
-                        Text('ELO ${details.elo}', style: AppTheme.tabularStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStatBox('PLAYED', details.matchesPlayed.toString(), AppColors.textPrimary),
-                  _buildStatBox('WON', details.matchesWon.toString(), AppColors.win),
-                  _buildStatBox('WIN RATE', '$winRate%', AppColors.gold),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Divider(color: AppColors.borderSubtle),
-              const SizedBox(height: 16),
-              
-              Text('STATS & PREFERENCES', style: AppTheme.label),
-              const SizedBox(height: 8),
-              _buildDetailRow('Primary Sport', details.sport),
-              _buildDetailRow(isCricket ? 'Batting Style' : 'Preference', details.preference1),
-              _buildDetailRow(isCricket ? 'Bowling Style' : 'Format', details.preference2),
-              if (details.cricHeroes != null)
-                _buildDetailRow('CricHeroes Link', '@${details.cricHeroes}', valueColor: AppColors.win),
-              
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.volt500,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: const StadiumBorder(),
-                ),
-                child: const Text('CLOSE PROFILE', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-
-
-  Widget _buildStatBox(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        Text(value, style: AppTheme.tabularStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-          Text(
-            value,
-            style: TextStyle(
-              color: valueColor ?? AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-        ],
+      builder: (_) => _HostProfileSheet(
+        publicId: challenge.creatorCaptainPublicId,
+        fallbackName: challenge.creatorCaptainName,
       ),
     );
   }
 
-  void _acceptChallenge(MockChallenge challenge) {
+
+
+  void _acceptChallenge(Challenge challenge) {
     final walletState = ref.read(walletProvider);
 
     if (walletState.depositPaise + walletState.winningsPaise + walletState.bonusPaise < challenge.entryFeePaise) {
@@ -270,7 +110,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
               if (debited) {
                 ref.read(challengesProvider.notifier).acceptChallenge(challenge.publicId).then((success) {
                   if (success) {
-                    AppSnackBar.showSuccess(context, 'Challenge matched! Entry fee locked in escrow. Match at ${challenge.time}.');
+                    AppSnackBar.showSuccess(context, 'Challenge matched! Entry fee locked in escrow. Match at ${challenge.timeLabel}.');
                   } else {
                     AppSnackBar.showError(context, 'Failed to match challenge.');
                   }
@@ -485,7 +325,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                                                     borderRadius: BorderRadius.circular(4),
                                                   ),
                                                   child: Text(
-                                                    '${challenge.skillLevel.toUpperCase()} LEVEL',
+                                                    '${(challenge.skillLevel ?? 'any').toUpperCase()} LEVEL',
                                                     style: TextStyle(
                                                       color: challenge.skillLevel == 'advanced'
                                                           ? AppColors.loss
@@ -536,7 +376,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                                 children: [
                                   Icon(Icons.access_time_filled_rounded, color: AppColors.textMuted, size: 16),
                                   const SizedBox(width: 6),
-                                  Text(challenge.time, style: TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
+                                  Text(challenge.timeLabel, style: TextStyle(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
                                 ],
                               ),
                               const SizedBox(height: 16),
@@ -583,6 +423,92 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Real numbers or an honest blank — never a plausible-looking guess.
+class _HostProfileSheet extends ConsumerWidget {
+  final String publicId;
+  final String fallbackName;
+
+  const _HostProfileSheet({required this.publicId, required this.fallbackName});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(publicPlayerProvider(publicId));
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: profile.when(
+        loading: () => const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => SizedBox(
+          height: 120,
+          child: Center(
+            child: Text(
+              'Could not load $fallbackName.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+        ),
+        data: (player) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              player.fullName,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            if (player.homeAreaName != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                player.homeAreaName!,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 20),
+            if (!player.hasRecord)
+              Text(
+                'No completed matches yet, so there is no record to show.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _MiniStat(label: 'ELO', value: '${player.eloRating}'),
+                  _MiniStat(label: 'PLAYED', value: '${player.matchesPlayed}'),
+                  _MiniStat(label: 'WON', value: '${player.wins}'),
+                ],
+              ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MiniStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: AppTheme.label),
+      ],
     );
   }
 }

@@ -4,10 +4,12 @@ import { Button } from '@/shared/ui/button';
 import { ScoreStrip } from '@/shared/ui/score-strip';
 import { LeaderboardRow } from '@/shared/ui/leaderboard-row';
 import { MatchStatusChip } from '@/shared/ui/match-status-chip';
-import { PrizeBadge } from '@/shared/ui/money-text';
 import { HeroCourtBackdrop } from '@/shared/ui/court-graphics';
 import { TonightPanel, TopArenas } from '@/features/arenas';
-import { SEED_PLAYERS } from '@/mocks/seed/players';
+import { apiFetchSafe } from '@/shared/lib/api';
+import { API_ENDPOINTS } from '@/shared/lib/api-endpoints';
+import type { FormResult } from '@/shared/ui/leaderboard-row';
+import { formatDayAndTime } from '@/shared/lib/datetime';
 import { t } from '@/shared/i18n';
 
 /**
@@ -118,37 +120,60 @@ function TheLoop() {
   );
 }
 
-function ProofSection() {
+interface CityTableRow {
+  rank: number | null;
+  publicId: string;
+  fullName: string;
+  areaName: string | null;
+  eloRating: number;
+  form: FormResult[];
+}
+
+interface RecentMatch {
+  publicId: string;
+  creator: string;
+  opponent: string;
+  winner: string | null;
+  arena: string | null;
+  playedAt: string;
+}
+
+async function ProofSection() {
+  /**
+   * Both halves are real reads now. The city table used to render five seeded
+   * players with hand-written W/L/D strings — including draws, which badminton
+   * cannot produce.
+   */
+  const [table, recent] = await Promise.all([
+    apiFetchSafe<CityTableRow[]>(API_ENDPOINTS.leaderboard('badminton', 'singles', 5)),
+    apiFetchSafe<RecentMatch[]>(API_ENDPOINTS.publicRecentMatches(1)),
+  ]);
+
+  const lastMatch = recent?.[0];
+
   return (
     <section className="px-6 py-20">
       <div className="mx-auto grid max-w-5xl gap-12 md:grid-cols-2">
-        <div>
-          <h2 className="font-display text-display-md mb-6 uppercase">{t('home.lastNight')}</h2>
-          <ScoreStrip
-            meta="Yesterday · 8:00 PM · Smash Point, Aliganj"
-            home={{ name: 'Smash Bros', score: '21 · 19 · 21', isWinner: true }}
-            away={{ name: 'Net Ninjas', score: '18 · 21 · 15', isWinner: false }}
-          />
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <MatchStatusChip status="verified" />
-            <PrizeBadge paise={90000} />
-          </div>
-        </div>
+        <LastResult match={lastMatch} />
 
         <div>
           <h2 className="font-display text-display-md mb-6 uppercase">{t('home.cityTable')}</h2>
-          <div className="divide-line-subtle divide-y">
-            {SEED_PLAYERS.slice(0, 5).map((player, index) => (
-              <LeaderboardRow
-                key={player.publicId}
-                rank={index + 1}
-                name={player.fullName}
-                areaName={player.areaName}
-                eloRating={player.eloRating}
-                form={player.form}
-              />
-            ))}
-          </div>
+          {table && table.length > 0 ? (
+            <div className="divide-line-subtle divide-y">
+              {table.map((row) => (
+                <LeaderboardRow
+                  key={row.publicId}
+                  rank={row.rank}
+                  name={row.fullName}
+                  areaName={row.areaName ?? ''}
+                  eloRating={row.eloRating}
+                  form={row.form}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-ink-muted text-sm">{t('leaderboard.empty')}</p>
+          )}
           <Button variant="ghost" size="sm" className="mt-4" asChild>
             <Link href="/leaderboard">
               {t('common.fullTable')} <ArrowRight />
@@ -157,5 +182,30 @@ function ProofSection() {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The most recent settled match.
+ *
+ * Renders nothing at all when no match has been played — a fabricated
+ * scoreline under a heading that says "Last night" is precisely the kind of
+ * detail people check.
+ */
+function LastResult({ match }: { match: RecentMatch | undefined }) {
+  if (!match) return null;
+
+  return (
+    <div>
+      <h2 className="font-display text-display-md mb-6 uppercase">{t('home.lastNight')}</h2>
+      <ScoreStrip
+        meta={`${formatDayAndTime(match.playedAt)}${match.arena ? ` · ${match.arena}` : ''}`}
+        home={{ name: match.creator, score: '', isWinner: match.winner === match.creator }}
+        away={{ name: match.opponent, score: '', isWinner: match.winner === match.opponent }}
+      />
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <MatchStatusChip status="verified" />
+      </div>
+    </div>
   );
 }

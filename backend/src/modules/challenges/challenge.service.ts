@@ -16,6 +16,7 @@ import {
 } from '../../models/index.js';
 import { withTransaction } from '../../shared/config/db.js';
 import { calculateMatchMoney } from './money.service.js';
+import { assertChallengeSport } from '../../shared/config/sports.js';
 import { env } from '../../shared/config/env.js';
 import {
   BadRequestError,
@@ -36,6 +37,24 @@ import { newMatchPublicId } from '../matches/match.service.js';
  * fails, the whole accept rolls back rather than leaving half a contract.
  */
 
+/**
+ * Resolves an id that may be either shape.
+ *
+ * `publicId` is what clients hold; a 24-char hex string is a Mongo id, which
+ * only internal callers and tests use. Checking the shape first avoids a
+ * CastError on the far more common publicId path.
+ */
+async function findByPublicOrObjectId<T>(
+  model: { findOne: (filter: Record<string, unknown>) => { session: (s: ClientSession) => Promise<T | null> } },
+  id: string,
+  session: ClientSession,
+): Promise<T | null> {
+  const byPublic = await model.findOne({ publicId: id }).session(session);
+  if (byPublic) return byPublic;
+
+  return /^[a-f\d]{24}$/iu.test(id) ? model.findOne({ _id: id }).session(session) : null;
+}
+
 const TEAM_SIZE: Record<MatchFormat, number> = {
   [MatchFormat.SINGLES]: 1,
   [MatchFormat.DOUBLES]: 2,
@@ -52,7 +71,15 @@ export async function createChallenge(input: {
   assertEntryFeeAllowed(input.entryFeePaise);
 
   return withTransaction(async (session) => {
-    const booking = await BookingModel.findById(input.bookingId).session(session);
+    /**
+     * Accept a publicId, or a raw ObjectId for callers that already hold one.
+     *
+     * Clients only ever see publicIds — that is the stated convention, and
+     * `GET /bookings` is the only place a booking id comes from. Requiring the
+     * Mongo id here made challenge creation unreachable from any client that
+     * followed the convention.
+     */
+    const booking = await findByPublicOrObjectId(BookingModel, input.bookingId, session);
     if (!booking) throw new NotFoundError('Booking');
 
     if (String(booking.bookerId) !== String(input.user._id)) {
@@ -62,10 +89,13 @@ export async function createChallenge(input: {
     const existing = await ChallengeModel.findOne({ bookingId: booking._id }).session(session);
     if (existing) throw new ConflictError('CONFLICT', 'This booking already has a challenge');
 
-    const team = await TeamModel.findById(input.teamId).session(session);
+    const team = await findByPublicOrObjectId(TeamModel, input.teamId, session);
     if (!team) throw new NotFoundError('Team');
     assertCaptain(team.captainId, input.user);
     assertTeamSize(team.members.filter((m) => m.isActive).length, team.format);
+
+    /** Booking any sport is fine; staking on it is badminton-only for now. */
+    assertChallengeSport(booking.sport);
 
     const commission = commissionPaise(
       input.entryFeePaise * 2,
@@ -190,7 +220,7 @@ export async function acceptChallenge(input: {
       throw new BadRequestError('You cannot accept your own challenge');
     }
 
-    const team = await TeamModel.findById(input.teamId).session(session);
+    const team = await findByPublicOrObjectId(TeamModel, input.teamId, session);
     if (!team) throw new NotFoundError('Team');
     assertCaptain(team.captainId, input.user);
     assertTeamSize(team.members.filter((m) => m.isActive).length, team.format);
@@ -400,6 +430,8 @@ export async function getChallengeDetail(input: {
     officialFeePaise,
     entryFeePaise: challenge.entryFeePaise,
     teamCount: 2,
+    /** The creator booked and paid for the slot; the opponent never is. */
+    venueFeeIsShared: false,
   });
 
   return {

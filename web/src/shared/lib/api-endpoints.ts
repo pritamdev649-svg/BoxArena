@@ -2,6 +2,7 @@
 export const API_ENDPOINTS = {
     // Common / Player
     usersMe: '/users/me',
+    userProfile: (publicId: string) => `/users/${publicId}`,
     arenas: '/arenas',
     arenaTop: (limit = 4) => `/arenas/top?limit=${limit}`,
     arenaDetail: (slug: string) => `/arenas/${slug}`,
@@ -28,6 +29,15 @@ export const API_ENDPOINTS = {
     officials: '/officials',
     challengeDetail: (publicId: string) => `/challenges/${publicId}`,
     challengeQuote: '/challenges/quote',
+    challenges: (limit = 20) => `/challenges?limit=${limit}`,
+    challengeCreate: '/challenges',
+    myBookings: '/bookings',
+    teamsMine: '/teams/mine',
+    teamCreate: '/teams',
+    leaderboard: (sport = 'badminton', format = 'singles', limit = 50) =>
+        `/leaderboards?sport=${sport}&format=${format}&limit=${limit}`,
+    publicRecentMatches: (limit = 5) => `/public/matches/recent?limit=${limit}`,
+    publicPlayer: (publicId: string) => `/public/players/${publicId}`,
     officialDetail: (publicId: string) => `/officials/${publicId}`,
 
     // Booking / checkout
@@ -35,6 +45,11 @@ export const API_ENDPOINTS = {
     bookingConfirm: '/bookings',
     bookingDetail: (publicId: string) => `/bookings/${publicId}`,
     wallet: '/wallet',
+    walletTransactions: (limit = 20) => `/wallet/transactions?limit=${limit}`,
+    walletTopupOrder: '/wallet/topup/order',
+    walletTopupVerify: '/wallet/topup/verify',
+    walletWithdraw: '/wallet/withdraw',
+    walletWithdrawals: '/wallet/withdrawals',
 
     // Auth
     otpRequest: '/auth/otp/request',
@@ -43,13 +58,14 @@ export const API_ENDPOINTS = {
 
     // Owner / Partner panel
     ownerApply: '/owner/apply',
+    ownerApplication: '/owner/application',
+    ownerApplicationStep: (step: number) => `/owner/application/step/${String(step)}`,
+    ownerApplicationSubmit: '/owner/application/submit',
     ownerVerifyPhone: (publicId: string) => `/owner/apply/${publicId}/verify-phone`,
     ownerDashboard: '/owner/dashboard',
     ownerArenas: '/owner/arenas',
     ownerArenaDetail: (publicId: string) => `/owner/arenas/${publicId}`,
     ownerBookings: (limit = 8) => `/owner/bookings?limit=${limit}`,
-    ownerApplication: '/owner/application',
-    ownerApplicationStep: (step: number) => `/owner/application/step/${step}`,
     ownerCourts: (arenaPublicId: string) => `/owner/arenas/${arenaPublicId}/courts`,
     ownerCourt: (courtId: string) => `/owner/courts/${courtId}`,
     ownerPricingRules: '/owner/pricing-rules',
@@ -69,5 +85,7 @@ export const API_ENDPOINTS = {
     adminApproveApplication: (publicId: string) => `/admin/applications/${publicId}/approve`,
     adminRejectApplication: (publicId: string) => `/admin/applications/${publicId}/reject`,
     adminDisputes: '/admin/disputes',
+    adminWithdrawals: (status = 'pending') => `/admin/withdrawals?status=${status}`,
+    adminReviewWithdrawal: (publicId: string) => `/admin/withdrawals/${publicId}/review`,
     adminConfig: '/admin/config',
 } as const;

@@ -1,13 +1,12 @@
 import 'dart:developer';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/core/mock/seed_data.dart';
+import 'package:app/core/models/challenge.dart';
 import 'package:app/core/services/api_client.dart';
 import 'package:app/core/constants/api_routes.dart';
 import 'package:app/core/providers/profile_provider.dart';
-import 'package:intl/intl.dart';
 
 class ChallengesState {
-  final List<MockChallenge> challenges;
+  final List<Challenge> challenges;
   final bool isLoading;
   final String? errorMessage;
 
@@ -18,7 +17,7 @@ class ChallengesState {
   });
 
   ChallengesState copyWith({
-    List<MockChallenge>? challenges,
+    List<Challenge>? challenges,
     bool? isLoading,
     String? errorMessage,
   }) {
@@ -43,60 +42,9 @@ class ChallengesNotifier extends Notifier<ChallengesState> {
       final response = await client.get(ApiRoutes.challenges);
       final List<dynamic> data = response['data'] ?? response;
 
-      final challenges = data.map((json) {
-        final publicId = json['publicId'] as String? ?? '';
-        
-        final creatorTeam = json['creatorTeamId'] as Map<String, dynamic>? ?? {};
-        final creatorTeamName = creatorTeam['name'] as String? ?? 'Gomti Smashers';
-
-        final creatorUser = json['creatorUserId'] as Map<String, dynamic>? ?? {};
-        final creatorCaptainName = creatorUser['fullName'] as String? ?? 'Aman Tripathi';
-
-        final sportStr = json['sport'] as String? ?? '';
-        final sport = sportStr.toLowerCase() == 'badminton'
-            ? 'Badminton'
-            : (sportStr.toLowerCase().contains('cricket') ? 'Box Cricket' : 'Turf Football');
-
-        final arena = json['arenaId'] as Map<String, dynamic>? ?? {};
-        final arenaName = arena['name'] as String? ?? 'The Vibhuti Box Arena';
-
-        final startAtStr = json['startAt'] as String? ?? '';
-        DateTime? startAt;
-        if (startAtStr.isNotEmpty) {
-          startAt = DateTime.parse(startAtStr).toLocal();
-        }
-        
-        final date = startAt != null
-            ? (startAt.day == DateTime.now().day
-                ? 'Today'
-                : DateFormat('MMM dd, yyyy').format(startAt))
-            : 'Today';
-
-        final time = startAt != null
-            ? DateFormat('hh:mm a').format(startAt)
-            : '07:00 PM';
-
-        final entryFeePaise = (json['entryFeePaise'] as num?)?.toInt() ?? 0;
-        final prizePoolPaise = (json['prizePoolPaise'] as num?)?.toInt() ?? 0;
-        
-        final format = json['format'] as String? ?? 'Doubles (2v2)';
-        final status = json['status'] as String? ?? 'open';
-
-        return MockChallenge(
-          publicId: publicId,
-          creatorTeamName: creatorTeamName,
-          creatorCaptainName: creatorCaptainName,
-          sport: sport,
-          arenaName: arenaName,
-          date: date,
-          time: time,
-          entryFeePaise: entryFeePaise,
-          prizePoolPaise: prizePoolPaise,
-          skillLevel: 'intermediate',
-          status: status,
-          teamFormat: format,
-        );
-      }).toList();
+      final challenges = data
+          .map((json) => Challenge.fromJson(json as Map<String, dynamic>))
+          .toList();
 
       state = ChallengesState(challenges: challenges, isLoading: false);
     } catch (e) {
@@ -170,19 +118,25 @@ class ChallengesNotifier extends Notifier<ChallengesState> {
     }
   }
 
-  Future<bool> createChallenge(MockChallenge challenge) async {
+  /// Posting a challenge.
+  ///
+  /// Both ids are required by the API and both are publicIds. There is no
+  /// longer a path where the server invents a booking for a court nobody
+  /// reserved — if the booking does not exist, this fails loudly.
+  Future<bool> createChallenge({
+    required String bookingPublicId,
+    required String teamPublicId,
+    required int entryFeePaise,
+    String? notes,
+  }) async {
     try {
       final client = ref.read(apiClientProvider);
-      final body = {
-        'entryFeePaise': challenge.entryFeePaise,
-        'sport': challenge.sport,
-        'arenaName': challenge.arenaName,
-        'startAt': "${challenge.date} ${challenge.time}",
-        'format': challenge.teamFormat,
-        'notes': 'Challenge created from mobile app',
-      };
-      log('[ChallengesNotifier] Posting challenge: $body');
-      await client.post(ApiRoutes.challenges, body);
+      await client.post(ApiRoutes.challenges, {
+        'bookingId': bookingPublicId,
+        'teamId': teamPublicId,
+        'entryFeePaise': entryFeePaise,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+      });
       await loadChallenges();
       return true;
     } catch (e) {
