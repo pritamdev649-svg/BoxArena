@@ -17,6 +17,8 @@
  */
 
 import { panels } from './en-panels';
+import { officialsCopy } from './en-officials';
+import { moneyCopy } from './en-money';
 
 export const en = {
   common: {
@@ -96,54 +98,6 @@ export const en = {
     cricket: 'Cricket',
     football: 'Football',
     badminton: 'Badminton',
-  },
-
-  /** Checkout: the held-slot confirmation step. */
-  checkout: {
-    metaTitle: 'Confirm your booking',
-    title: 'Confirm your booking',
-    court: 'Court',
-    date: 'Date',
-    time: 'Time',
-    duration: 'Duration',
-    hours: { one: '{count} hour', other: '{count} hours' },
-    total: 'Total',
-    heldFor: 'Slots held for',
-    paymentHeading: 'How you want to pay',
-    payFullLabel: 'Pay the full amount now',
-    payFullHint: 'Charged to your BoxArena wallet.',
-    payDepositLabel: 'Pay {count}% now, rest at the venue',
-    payDepositHint: 'The deposit is forfeited if you do not turn up.',
-    payNow: 'Paying now',
-    payAtGate: 'Due at the venue',
-    walletBalance: 'Wallet balance',
-    shortfall: 'Your wallet is short by',
-    confirm: 'Confirm booking',
-    confirming: 'Confirming…',
-    failed: 'Could not confirm your booking',
-    releaseNote: 'Your slots are released automatically if you do not confirm in time.',
-    expiredTitle: 'Your hold expired',
-    expiredBody: 'Those slots went back on sale. Pick your hours again to continue.',
-    pickAgain: 'Pick slots again',
-    brokenTitle: 'That checkout link is no longer valid',
-    brokenBody: 'The slots in this link have changed or are no longer available.',
-    browseArenas: 'Find a court',
-  },
-
-  /** Booking receipt. */
-  booking: {
-    metaTitle: 'Your booking',
-    confirmedTitle: 'Booking confirmed',
-    confirmedBody: 'Show the code below at the venue to check in.',
-    checkInCode: 'Check-in code',
-    checkInHint: 'The desk verifies this code when you arrive.',
-    when: 'When',
-    sport: 'Sport',
-    reference: 'Reference',
-    paid: 'Paid from wallet',
-    bookAnother: 'Book another slot',
-    notFoundTitle: 'Booking not found',
-    notFoundBody: 'We could not find that booking on your account.',
   },
 
   /** Venue detail page: photos, activity and ratings. */
@@ -325,6 +279,10 @@ export const en = {
 
   /** Venue panel and ops console copy — see en-panels.ts. */
   ...panels,
+  /** Scoreboard and officials marketplace — see en-officials.ts. */
+  ...officialsCopy,
+  /** Everything a player pays or wins — see en-money.ts. */
+  ...moneyCopy,
 } as const;
 
 export type Messages = typeof en;

@@ -26,6 +26,8 @@ export const API_ENDPOINTS = {
     matchProposeOfficial: (publicId: string) => `/matches/${publicId}/official`,
     matchConfirmOfficial: (publicId: string) => `/matches/${publicId}/official/confirm`,
     officials: '/officials',
+    challengeDetail: (publicId: string) => `/challenges/${publicId}`,
+    challengeQuote: '/challenges/quote',
     officialDetail: (publicId: string) => `/officials/${publicId}`,
 
     // Booking / checkout
@@ -37,6 +39,7 @@ export const API_ENDPOINTS = {
     // Auth
     otpRequest: '/auth/otp/request',
     otpVerify: '/auth/otp/verify',
+    socketToken: '/auth/socket-token',
 
     // Owner / Partner panel
     ownerApply: '/owner/apply',

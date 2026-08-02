@@ -2,7 +2,7 @@
 
 Live status of every task in [`tasks.md`](./tasks.md). One row per task ID, same order.
 
-**Last full audit:** 2026-08-01 · **Partially updated:** 2026-08-03
+**Last full audit:** 2026-08-01 · **Partially updated:** 2026-08-03 (officials + live scoring)
 **Overall: 26.5 / 47 tasks — ~56%**
 
 > The 2026-08-02/03 updates are **not** re-audits. They revise only the rows changed by
@@ -35,7 +35,7 @@ Per-MVP-feature breakdown: [`mvp/featuredoc/`](./mvp/featuredoc/README.md).
 | 6 — Integration | 3 | 0.5 | 17% |
 | 7 — Flutter | 5 | 3.0 | 60% |
 | **Total** | **47** | **26.5** | **56%** |
-| *Pending (unscheduled)* | *18* | *5.5* | *31%* |
+| *Pending (unscheduled)* | *18* | *14.5* | *81%* |
 
 Scoring: ✅ = 1, 🟡 = 0.5, ⬜/🔴 = 0. The pending row (OF1–OF7, MM1–MM5, LS1–LS6) is
 **excluded** from the 47-task total — it is specified, not scheduled.
@@ -170,18 +170,18 @@ Outside the 47-task MVP count above. Recorded so it is tracked rather than remem
 
 | ID | Task | Status | Notes |
 |---|---|---|---|
-| OF1 | Official registration & onboarding — profile, price, availability, ID verification, rating | 🟡 | [`official.service.ts`](../backend/src/modules/officials/official.service.ts) + 8 routes. Register, browse, own profiles, ops verification. **No availability calendar, no rating writes yet.** |
+| OF1 | Official registration & onboarding | ✅ | Backend + web (`/officials`, `/officials/register`) + Flutter register screen. **No availability calendar, no rating writes.** |
 | OF2 | Venue onboarding: list own officials | 🔴 | Extends `arena_onboarding.md` |
-| OF3 | Booking flow: pick official, **both captains confirm** before lock | 🟡 | Backend done: `POST /matches/:id/official` + `/official/confirm`. Proposing a different official resets both confirmations. **No UI.** |
-| OF4 | Official fee collected upfront, escrowed, released on completion | 🔴 | Default 50/50 split between teams |
+| OF3 | Booking flow: pick official, **both captains confirm** before lock | 🟡 | Backend + web picker at `/matches/[id]/official`. **No Flutter screen.** |
+| OF4 | Official fee collected upfront, escrowed, released on completion | 🟡 | [`official-fee.service.ts`](../backend/src/modules/officials/official-fee.service.ts) — collect, pay in the settlement transaction, refund on void. Web trigger in the picker. **No Flutter UI.** |
 | OF5 | Data model: `Official`, `Match.officialId` + per-team confirmation flags | ✅ | `Official` model; `Match` gains `officialId`, `officialCanTriggerPayout` (snapshotted — Q3 answered), both confirm flags, `bestOf`, `startedAt`/`endedAt`. |
-| OF6 | Edge cases: no agreement, official no-show, no coverage at venue | 🔴 | **Q1 undecided** — no-show policy |
+| OF6 | Edge cases: no agreement, official no-show, no coverage at venue | 🟡 | **Q1 decided**: refund in full + fall back to dual-captain. Endpoint built; no button on any client. No-agreement fallback and venue-coverage gating still open. |
 | OF7 | Multi-phase brackets: per-match official, per-set `Match.phases[]` | 🟡 | Per-set records exist as `MatchSet`, per-rally as `MatchPoint`. **No bracket/multi-round assignment.** |
-| MM1 | Live cost/prize calculation engine at challenge creation | 🔴 | Server-computed, never client-trusted |
-| MM2 | Creator warning when winner profit ≤ ₹0 + suggested minimum entry fee | 🔴 | **Q4 undecided** — floor formula |
-| MM3 | Challenge details screen with win/lose outcome table + mandatory confirm checkbox | 🔴 | Shown to opponent *before* accepting |
-| MM4 | `Challenge` fee/commission fields + computed pool fields | 🔴 | |
-| MM5 | Escrow trigger: lock on both teams paying, release on 3 conditions | 🔴 | **Q2 undecided** — collides with shipped settlement timing |
+| MM1 | Live cost/prize calculation engine at challenge creation | ✅ | [`money.service.ts`](../backend/src/modules/challenges/money.service.ts) + `POST /challenges/quote` + `GET /challenges/:publicId`. Consumed by the web challenge-detail page. |
+| MM2 | Creator warning when winner profit ≤ ₹0 + suggested minimum entry fee | ✅ | **Q4 decided** — `E > (V+O) / (N·(N(1−C)−1))`. Warning renders on the breakdown with the break-even figure. |
+| MM3 | Challenge details screen with win/lose outcome table + mandatory confirm checkbox | ✅ | `/challenges/[publicId]` — cost table, pool, **if you win / if you lose**, verification status, dispute note, and an unticked checkbox gating Accept. |
+| MM4 | Computed pool fields, server-side only | ✅ | Returned by the detail endpoint; the client never computes money. |
+| MM5 | Escrow trigger: lock on both teams paying, release on 3 conditions | 🔴 | **Q2 decided** — commission timing follows when each payee is paid: entry at collection, venue at settlement, official at payout. The combined per-team lock (venue + official + entry in one hold) is still not built. |
 
 ### Badminton live scoring (games_rule/badminton.md)
 
@@ -190,14 +190,16 @@ Outside the 47-task MVP count above. Recorded so it is tracked rather than remem
 | LS1 | Pure rally state machine — 21 / win-by-2 / cap-30, serve, ends changes, best-of-N | ✅ | [`badminton-engine.ts`](../backend/src/modules/matches/badminton-engine.ts), **23 unit tests**. No I/O — deuce to 24-22, 29-29 cap, decider swap at 11 all covered. |
 | LS2 | Append-only point log + set/event logs, score derived by replay | ✅ | `MatchPoint` / `MatchSet` / `MatchEvent`. Undo appends a correction; the mistake stays on the record. |
 | LS3 | Scoring API — start, point, undo, timeout/event, confirm, read | ✅ | 7 routes on `/matches/:publicId/live/*`, idempotent per rally, **16 integration tests**. |
-| LS4 | Live push over the existing WebSocket | 🔴 | Not started. `socket.ts` exists and is authenticated; nothing broadcasts yet. |
-| LS5 | Official's scoring screen (two tap zones, undo, clock) | 🔴 | No UI on web or Flutter. |
-| LS6 | Both-captain confirmation when the official cannot trigger payout | 🟡 | Backend records the result and parks the match; **captains have no route to confirm it yet**. |
+| LS4 | Live push over the existing WebSocket | 🟡 | `broadcastToUsers` fires post-commit. Web subscribes via a Zustand store and a one-minute socket-scoped token (`POST /auth/socket-token`); the handshake now rejects anything not `scope: 'socket'`. **Flutter does not subscribe** — needs `web_socket_channel`. |
+| LS5 | Official's scoring screen | ✅ | Web `/score/[id]` and Flutter `/score/:id` — court diagram, serve position, umpire call, outcome tags, undo, timeout, clock. Match statistics render under the board on web. |
+| LS6 | Both-captain confirmation when the official cannot trigger payout | ✅ | Backend + web `/matches/[id]/confirm` + Flutter confirm screen. Disagreeing raises a dispute. |
 
-**Blocked on six open questions** listed at the foot of the feature doc. Q2 is the sharp one:
-the spec says commission is deducted **at collection**, while the settlement service shipped
-on 2026-08-02 computes venue commission **at settlement**. Both cannot be right for the same
-rupee.
+**Five of the six open questions are now decided** — see the decisions table in
+[`11-officials-marketplace.md`](./mvp/featuredoc/11-officials-marketplace.md). Q2's apparent
+collision dissolved: entry, venue and official commissions are three different cuts on three
+different pots, and each is taken when that payee is paid. **Q6 remains open and is a legal
+question, not an engineering one:** whether the official's fee counts inside the compliance
+cap on a match.
 
 ---
 

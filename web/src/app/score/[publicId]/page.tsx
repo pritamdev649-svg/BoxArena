@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { apiFetchSafe } from '@/shared/lib/api';
 import { getPlayerToken } from '@/shared/lib/panel-auth';
 import { API_ENDPOINTS } from '@/shared/lib/api-endpoints';
-import { Scoreboard, type RallyState } from '@/features/scoring';
+import { Scoreboard, MatchStats, type RallyState, type MatchStatsData } from '@/features/scoring';
 import { t } from '@/shared/i18n';
 
 export const metadata: Metadata = { title: t('scoring.metaTitle') };
@@ -51,7 +51,10 @@ export default async function ScorePage({
    * every command. We ask only so the finished screen can show the confirm
    * button rather than a button that always fails.
    */
-  const assigned = await apiFetchSafe<AssignedMatch[]>(API_ENDPOINTS.officialMyMatches, { token });
+  const [assigned, stats] = await Promise.all([
+    apiFetchSafe<AssignedMatch[]>(API_ENDPOINTS.officialMyMatches, { token }),
+    apiFetchSafe<MatchStatsData>(API_ENDPOINTS.matchStats(publicId), { token }),
+  ]);
   const canConfirm = (assigned ?? []).some((match) => match.publicId === publicId);
 
   return (
@@ -65,6 +68,16 @@ export default async function ScorePage({
         startedAt={live.startedAt}
         canConfirm={canConfirm}
       />
+
+      {stats && stats.totalPointsPlayed > 0 ? (
+        <div className="mt-10">
+          <MatchStats
+            stats={stats}
+            creatorName={(live.creatorNames ?? [t('scoring.sideA')]).join(' / ')}
+            opponentName={(live.opponentNames ?? [t('scoring.sideB')]).join(' / ')}
+          />
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -265,6 +265,30 @@ export async function logoutAllSessions(userId: string): Promise<void> {
   );
 }
 
+/**
+ * A short-lived token the BROWSER may hold, purely to open a WebSocket.
+ *
+ * The socket authenticates from a query-string parameter, and query strings
+ * land in proxy logs and browser history — so this must not be the access
+ * token. It is scoped (`scope: 'socket'`) and lives for a minute, long enough
+ * to connect and useless if it leaks.
+ *
+ * The real access token stays in an httpOnly cookie the page never exposes.
+ */
+const SOCKET_TOKEN_TTL_SECONDS = 60;
+
+export function issueSocketToken(user: Pick<IUser, '_id' | 'publicId' | 'role'>): {
+  token: string;
+  expiresInSeconds: number;
+} {
+  const token = jwt.sign(
+    { sub: String(user._id), publicId: user.publicId, role: user.role, scope: 'socket' },
+    env.JWT_ACCESS_SECRET,
+    { expiresIn: SOCKET_TOKEN_TTL_SECONDS, issuer: env.JWT_ISSUER },
+  );
+  return { token, expiresInSeconds: SOCKET_TOKEN_TTL_SECONDS };
+}
+
 export function verifyAccessToken(token: string): AccessTokenClaims {
   try {
     return jwt.verify(token, env.JWT_ACCESS_SECRET, {

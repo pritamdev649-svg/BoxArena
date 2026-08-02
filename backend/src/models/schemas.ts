@@ -841,6 +841,8 @@ export interface IMatch extends Document {
   officialFeeCollectedAt?: Date;
   officialFeePaidAt?: Date;
   officialFeeRefundedAt?: Date;
+  /** Set when captains reported the official absent — kept for their rating. */
+  officialNoShowAt?: Date;
   /** Best of 1, 3 or 5. Badminton default 3. */
   bestOf: number;
   startedAt?: Date;
@@ -931,6 +933,7 @@ const MatchSchema = new Schema<IMatch>(
     officialFeeCollectedAt: { type: Date },
     officialFeePaidAt: { type: Date },
     officialFeeRefundedAt: { type: Date },
+    officialNoShowAt: { type: Date },
     bestOf: { type: Number, default: 3, min: 1, max: 5 },
     startedAt: { type: Date },
     endedAt: { type: Date },

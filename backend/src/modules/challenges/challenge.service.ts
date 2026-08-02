@@ -6,6 +6,7 @@ import {
   MatchFormat,
   MatchModel,
   MatchStatus,
+  OfficialModel,
   TeamModel,
   TransactionType,
   WalletBucket,
@@ -14,6 +15,7 @@ import {
   type IUser,
 } from '../../models/index.js';
 import { withTransaction } from '../../shared/config/db.js';
+import { calculateMatchMoney } from './money.service.js';
 import { env } from '../../shared/config/env.js';
 import {
   BadRequestError,
@@ -354,3 +356,63 @@ export const ESCROW_BUCKET_ORDER = [
   WalletBucket.DEPOSIT,
   WalletBucket.WINNINGS,
 ] as const;
+
+/**
+ * One challenge with the full money picture attached.
+ *
+ * Powers the pre-accept screen (money spec MM3). The breakdown is computed
+ * HERE, server-side, rather than by the client that is about to stake money on
+ * it — the figures somebody agreed to must be the figures the server used.
+ */
+export async function getChallengeDetail(input: {
+  challengePublicId: string;
+}): Promise<Record<string, unknown>> {
+  const challenge = await ChallengeModel.findOne({ publicId: input.challengePublicId })
+    .populate('creatorTeamId', 'name publicId')
+    .populate('opponentTeamId', 'name publicId')
+    .populate('arenaId', 'name slug publicId address commissionPercent')
+    .lean();
+  if (!challenge) throw new NotFoundError('Challenge');
+
+  /**
+   * Court hire for this slot. Read from the booking rather than the court's
+   * list price, because a peak-hour band may have made it different.
+   */
+  const booking = await BookingModel.findById(challenge.bookingId)
+    .select('totalPaise startAt endAt')
+    .lean();
+  const venueFeePaise = booking?.totalPaise ?? 0;
+
+  const match = await MatchModel.findOne({ challengeId: challenge._id })
+    .select('publicId officialId officialCanTriggerPayout officialFeePaise')
+    .lean();
+
+  let officialFeePaise = match?.officialFeePaise ?? 0;
+  if (!officialFeePaise && match?.officialId) {
+    const official = await OfficialModel.findById(match.officialId)
+      .select('pricePerMatchPaise')
+      .lean();
+    officialFeePaise = official?.pricePerMatchPaise ?? 0;
+  }
+
+  const money = calculateMatchMoney({
+    venueFeePaise,
+    officialFeePaise,
+    entryFeePaise: challenge.entryFeePaise,
+    teamCount: 2,
+  });
+
+  return {
+    ...challenge,
+    venueFeePaise,
+    officialFeePaise,
+    money,
+    match: match
+      ? {
+        publicId: match.publicId,
+        officialCanTriggerPayout: match.officialCanTriggerPayout ?? false,
+        hasOfficial: Boolean(match.officialId),
+      }
+      : null,
+  };
+}

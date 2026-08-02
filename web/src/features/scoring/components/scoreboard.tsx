@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RotateCcw, Timer } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { t } from '@/shared/i18n';
@@ -13,6 +13,8 @@ import {
   type RallyState,
   type ScoringResult,
 } from '../actions';
+import { useLiveScoreStore } from '@/shared/store/live-score-store';
+import { LiveSubscription } from './live-subscription';
 import { MatchClock } from './match-clock';
 import { CourtView } from './court-view';
 import { ScoreHeader, umpireCall } from './score-header';
@@ -61,6 +63,25 @@ function useScoring(initial: RallyState) {
   return { state, setState, busy, setBusy, error, setError, notice, run };
 }
 
+/**
+ * Applies pushed frames from other devices.
+ *
+ * The official's OWN commands remain authoritative for their board — a frame
+ * that arrived while a tap was in flight must not overwrite the response to
+ * that tap. So pushes are ignored while a command is running, and the next
+ * rally corrects any drift.
+ */
+function useLiveFrames(matchPublicId: string, scoring: ReturnType<typeof useScoring>) {
+  const frame = useLiveScoreStore((store) => store.frames[matchPublicId]);
+
+  useEffect(() => {
+    if (!frame || scoring.busy) return;
+    scoring.setState(frame.state as RallyState);
+    /** Only the frame drives this; re-running on every render would loop. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frame]);
+}
+
 export function Scoreboard(props: ScoreboardProps) {
   const scoring = useScoring(props.initialState);
   const [started, setStarted] = useState(props.status !== 'scheduled');
@@ -95,6 +116,7 @@ function LiveBody({
 }) {
   const [outcome, setOutcome] = useState<PointOutcome | undefined>();
   const score = usePointTap({ matchPublicId: props.matchPublicId, scoring, outcome, setOutcome });
+  useLiveFrames(props.matchPublicId, scoring);
 
   const undo = () =>
     void scoring.run(() =>
@@ -109,6 +131,7 @@ function LiveBody({
 
   return (
     <div className="flex min-h-[80vh] flex-col gap-2">
+      <LiveSubscription matchPublicId={props.matchPublicId} />
       <TopBar props={props} scoring={scoring} creatorLabel={creatorLabel} opponentLabel={opponentLabel} />
 
       {scoring.state.isComplete ? (

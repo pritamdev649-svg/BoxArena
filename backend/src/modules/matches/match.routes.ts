@@ -295,3 +295,15 @@ matchRoutes.post('/:publicId/official-fee/collect', async (req, res, next) => {
     next(err);
   }
 });
+
+/** Captains report an official who never arrived (§OF6). */
+matchRoutes.post('/:publicId/official/no-show', async (req, res, next) => {
+  try {
+    ok(res, await fees.reportOfficialNoShow({
+      user: currentUser(req),
+      matchPublicId: String(req.params.publicId),
+    }));
+  } catch (err) {
+    next(err);
+  }
+});

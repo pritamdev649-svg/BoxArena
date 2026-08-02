@@ -65,3 +65,58 @@ export async function confirmResultAction(input: {
   revalidatePath(`/matches/${input.matchPublicId}/confirm`);
   return { success: true, ...result.data };
 }
+
+export interface OfficialSummary {
+  publicId: string;
+  displayName: string;
+  type: 'venue_staff' | 'independent' | 'team_added';
+  sports: string[];
+  pricePerMatchPaise: number;
+  experienceYears?: number;
+  rating: { average: number; count: number };
+  canTriggerPayout: boolean;
+}
+
+/**
+ * A captain proposes an official; the other captain confirms.
+ *
+ * Mutual consent is the design — a unilateral pick would let one side choose
+ * who validates the result they are about to be paid on. Proposing a different
+ * official resets both confirmations server-side.
+ */
+export async function proposeOfficialAction(input: {
+  matchPublicId: string;
+  officialPublicId: string;
+}): Promise<OfficialResult> {
+  const result = await call(
+    API_ENDPOINTS.matchProposeOfficial(input.matchPublicId),
+    { officialPublicId: input.officialPublicId },
+    'Could not propose that official',
+  );
+  if (!result.ok) return { success: false, error: result.error };
+
+  revalidatePath(`/matches/${input.matchPublicId}/official`);
+  return { success: true };
+}
+
+export async function confirmOfficialAction(matchPublicId: string): Promise<OfficialResult> {
+  const result = await call(
+    API_ENDPOINTS.matchConfirmOfficial(matchPublicId),
+    {},
+    'Could not confirm that official',
+  );
+  if (!result.ok) return { success: false, error: result.error };
+
+  revalidatePath(`/matches/${matchPublicId}/official`);
+  return { success: true };
+}
+
+/** Charges both captains their share once the official is locked in. */
+export async function collectOfficialFeeAction(matchPublicId: string): Promise<OfficialResult> {
+  const result = await call(
+    API_ENDPOINTS.matchCollectOfficialFee(matchPublicId),
+    {},
+    'Could not collect the fee',
+  );
+  return result.ok ? { success: true } : { success: false, error: result.error };
+}

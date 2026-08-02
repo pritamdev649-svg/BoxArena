@@ -69,6 +69,18 @@ const schema = z.object({
   PLATFORM_COMMISSION_PERCENT: int(10),
   MIN_ENTRY_FEE_PAISE: int(0),
   MAX_ENTRY_FEE_PAISE: int(500_000),
+  /**
+   * Question Q6, and a LEGAL decision rather than an engineering one.
+   *
+   * `false` (default): the cap limits the STAKE only. Venue and official fees
+   * are service charges for a service actually delivered — not at risk, not
+   * winnable — and counting them would mean a venue raising its hourly rate
+   * silently lowers how much players may stake, which is incoherent.
+   *
+   * `true`: the cap limits a player's total outlay per match. Set this if
+   * counsel reads the limit as "what a player can lose".
+   */
+  ENTRY_CAP_INCLUDES_MATCH_COSTS: bool(false),
   MIN_WITHDRAWAL_PAISE: int(10_000),
   SLOT_HOLD_DURATION_SECONDS: int(300),
   SLOT_HOLD_EXTENDED_SECONDS: int(900),

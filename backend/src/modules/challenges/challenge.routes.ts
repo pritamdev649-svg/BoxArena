@@ -8,6 +8,7 @@ import { NotFoundError } from '../../shared/errors/app-error.js';
 import { publicId } from '../../shared/utils/ids.js';
 import { Types } from 'mongoose';
 import * as service from './challenge.service.js';
+import { calculateMatchMoney } from './money.service.js';
 
 export const challengeRoutes = Router();
 challengeRoutes.use(authenticate);
@@ -218,6 +219,17 @@ challengeRoutes.get('/', validate({ query: feedQuery }), async (req, res, next) 
   }
 });
 
+/** Full detail with the server-computed money breakdown (money spec MM3). */
+challengeRoutes.get('/:publicId', async (req, res, next) => {
+  try {
+    ok(res, await service.getChallengeDetail({
+      challengePublicId: String(req.params.publicId),
+    }));
+  } catch (err) {
+    next(err);
+  }
+});
+
 challengeRoutes.post('/:publicId/accept', validate({ body: acceptSchema }), async (req, res, next) => {
   try {
     ok(res, await service.acceptChallenge({
@@ -225,6 +237,32 @@ challengeRoutes.post('/:publicId/accept', validate({ body: acceptSchema }), asyn
       challengePublicId: String(req.params.publicId),
       teamId: req.body.teamId,
     }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Match economics (money spec MM1–MM3)
+//
+// One endpoint serves BOTH the creator picking a price and the opponent
+// deciding whether to accept. Two implementations of this maths would
+// eventually disagree, and the number a player was shown before staking money
+// is the one thing that must never be wrong.
+// ---------------------------------------------------------------------------
+
+const quoteSchema = z
+  .object({
+    venueFeePaise: z.number().int().min(0),
+    officialFeePaise: z.number().int().min(0).default(0),
+    entryFeePaise: z.number().int().min(0),
+    teamCount: z.number().int().min(1).max(64).default(2),
+  })
+  .strict();
+
+challengeRoutes.post('/quote', validate({ body: quoteSchema }), (req, res, next) => {
+  try {
+    ok(res, calculateMatchMoney(req.body));
   } catch (err) {
     next(err);
   }

@@ -542,7 +542,18 @@ export async function getLiveState(matchPublicId: string) {
   return {
     matchPublicId: match.publicId,
     ...names,
+    sport: match.sport,
+    format: match.format,
     status: match.status,
+    /** The officiating agreement — the picker screen renders straight off this. */
+    official: {
+      officialId: match.officialId ? String(match.officialId) : null,
+      canTriggerPayout: match.officialCanTriggerPayout ?? false,
+      confirmedByCreator: match.officialConfirmedByCreator,
+      confirmedByOpponent: match.officialConfirmedByOpponent,
+      locked: match.officialConfirmedByCreator && match.officialConfirmedByOpponent,
+      noShowAt: match.officialNoShowAt ?? null,
+    },
     startedAt: match.startedAt,
     endedAt: match.endedAt,
     bestOf: match.bestOf,

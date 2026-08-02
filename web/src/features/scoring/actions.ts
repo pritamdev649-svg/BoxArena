@@ -141,3 +141,27 @@ export async function confirmResultAction(matchPublicId: string): Promise<Confir
   revalidatePath(`/score/${matchPublicId}`);
   return { success: true, ...result.data };
 }
+
+/**
+ * A one-minute credential the browser may hold, purely to open the WebSocket.
+ *
+ * The session cookie is httpOnly so client JS cannot read it, and the socket
+ * takes its credential from the URL — where an access token must never go.
+ * This mints a scoped, short-lived substitute instead.
+ */
+export async function socketTokenAction(): Promise<string | null> {
+  const token = await getPlayerToken();
+  if (!token) return null;
+
+  try {
+    const result = await apiFetch<{ token: string }>(API_ENDPOINTS.socketToken, {
+      method: 'POST',
+      token,
+      body: {},
+    });
+    return result.token;
+  } catch {
+    /** Live follow is a nicety — the scoreboard works without it. */
+    return null;
+  }
+}

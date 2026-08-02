@@ -24,7 +24,18 @@ export function initWebSocketServer(server: Server) {
         return;
       }
 
-      const claims = verifyAccessToken(token);
+      /**
+       * Only a socket-scoped token opens a connection. An access token would
+       * work cryptographically, but it arrives in the URL — and a credential
+       * that can call the whole API must never sit in a query string.
+       */
+      const claims = verifyAccessToken(token) as { sub?: string; scope?: string };
+      if (claims.scope !== 'socket') {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
       const user = await UserModel.findById(claims.sub);
       if (!user) {
         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');

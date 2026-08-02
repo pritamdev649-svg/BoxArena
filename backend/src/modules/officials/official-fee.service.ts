@@ -264,6 +264,48 @@ export async function quoteOfficialFee(input: {
   };
 }
 
+/**
+ * The official never turned up (featuredoc/11 §OF6, question Q1 — decided here).
+ *
+ * Policy: **refund the fee in full and fall back to dual-captain verification.**
+ *
+ * The alternatives are worse. Rebooking mid-evening cannot be guaranteed, and
+ * voiding the match punishes two teams who are standing on court ready to
+ * play. Falling back costs nobody anything: the dual-captain path already
+ * exists and is the default for every match without an official.
+ *
+ * The match keeps its `officialId` for the record — who failed to appear is
+ * exactly the thing a rating system needs to know — but loses the authority to
+ * settle on that official's word alone.
+ */
+export async function reportOfficialNoShow(input: {
+  user: IUser;
+  matchPublicId: string;
+}): Promise<{ refundedPaise: number }> {
+  return withTransaction(async (session) => {
+    const match = await MatchModel.findOne({ publicId: input.matchPublicId }).session(session);
+    if (!match) throw new NotFoundError('Match');
+
+    await assertCaptain(match, input.user);
+
+    if (match.startedAt) {
+      throw new ConflictError('CONFLICT', 'The official already started this match');
+    }
+    if (match.officialNoShowAt) {
+      return { refundedPaise: 0 };
+    }
+
+    const refundedPaise = await refundOfficialFee(match, session);
+
+    match.officialNoShowAt = new Date();
+    /** Their scorecard can no longer release money — nobody is here to write one. */
+    match.officialCanTriggerPayout = false;
+    await match.save({ session });
+
+    return { refundedPaise };
+  });
+}
+
 /** Guards the fee routes — only a captain of either side may trigger them. */
 export async function assertCaptain(match: IMatch, user: IUser): Promise<void> {
   const teams = await TeamModel.find({

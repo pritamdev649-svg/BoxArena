@@ -1,7 +1,7 @@
 # 11 — Officials Marketplace & Match Money Calculation
 
 **PRD:** not yet in `prd.md` · **Roadmap:** unscheduled · **Task IDs:** OF1–OF7, MM1–MM5
-**Status:** 🔴 **Pending — nothing built.** Spec captured 2026-08-02, awaiting scheduling.
+**Status:** 🟡 **Officials + live scoring built; the money engine is not.** See the status table at the foot.
 
 > Two features in one doc because they are one decision: an official is a **cost of
 > playing**, and the money engine cannot be specified without knowing who charges what.
@@ -84,14 +84,14 @@ marked complete.
 | `officialId` | |
 | `officialConfirmedByTeamA` | bool |
 | `officialConfirmedByTeamB` | bool |
-| `officialType` | denormalised at lock time — see open question Q3 |
+| `officialCanTriggerPayout` | snapshotted at assignment — Q3, decided |
 
 ### OF6 — Edge cases that need a decided policy
 
 | Case | Required behaviour |
 |---|---|
 | Teams cannot agree on an official | Fall back to the venue's listed official, or platform auto-assigns from the independent pool |
-| Official no-shows | Refund or rebooking policy — **not yet decided** |
+| Official no-shows | **Refund in full, fall back to dual-captain** — Q1, decided. `POST /matches/:id/official/no-show` |
 | No official available at a venue for a paid tournament | Venue may need excluding from the "paid-tournament-eligible" list until it has official coverage |
 
 ### OF7 — Multi-phase / bracket support
@@ -174,25 +174,25 @@ Needs a suggested-minimum-entry-fee formula so the app can auto-suggest a floor.
 
 ---
 
-## API surface — 0 / ~14 (all pending)
+## API surface
 
-Paths are indicative; none are in [`api_contract.md`](../../api_contract.md) yet.
-
-| Method | Path | Purpose |
+| Method | Path | Status |
 |---|---|---|
-| `POST` | `/officials` | Register as an official |
-| `GET` | `/officials/me` · `PATCH` `/officials/me` | Own profile & price |
-| `GET` | `/officials` — `?sport=&arenaId=&startAt=` | Browse available near a venue/slot |
-| `POST` | `/officials/:id/verify` | Admin ID verification → `canTriggerPayout` |
-| `GET` | `/officials/:id` | Public profile + rating |
-| `POST` | `/owner/officials` · `GET` `/owner/officials` | Venue lists its own staff |
-| `POST` | `/challenges/:id/official` | Propose an official |
-| `POST` | `/challenges/:id/official/confirm` | Second captain confirms → locks |
-| `POST` | `/matches/:id/phases` | Per-set/phase score entry by the official |
-| `POST` | `/challenges/quote` | **MM1** — live cost/prize quote, server-computed |
-| `POST` | `/matches/:id/official-scorecard` | Official's confirmed result |
-
----
+| `POST` | `/officials` — register | ✅ |
+| `GET` | `/officials` — browse, `?sport=&arenaPublicId=&payoutCapableOnly=` | ✅ |
+| `GET` | `/officials/me` · `/officials/me/matches` | ✅ |
+| `PATCH` | `/officials/:publicId` — own profile & price | ✅ |
+| `GET` | `/officials/:publicId` | ✅ |
+| `GET` | `/officials/pending-verification` — ops queue | ✅ |
+| `POST` | `/officials/:publicId/verification` — ops decision | ✅ |
+| `POST` | `/matches/:publicId/official` — propose | ✅ |
+| `POST` | `/matches/:publicId/official/confirm` — second captain agrees | ✅ |
+| `POST` | `/matches/:publicId/official/no-show` — Q1 fallback | ✅ |
+| `GET` | `/matches/:publicId/official-fee` — quote the split | ✅ |
+| `POST` | `/matches/:publicId/official-fee/collect` — charge both sides | ✅ |
+| `POST` | `/challenges/quote` — **MM1** cost/prize engine | ✅ |
+| `POST` | `/matches/:publicId/result/confirm` — captain agrees or contests | ✅ |
+| — | Live scoring (8 routes) | ✅ see [`games_rule/badminton.md`](../../games_rule/badminton.md) |
 
 ## How this lands on what already exists
 
@@ -204,18 +204,20 @@ Paths are indicative; none are in [`api_contract.md`](../../api_contract.md) yet
 | Wallet escrow | Official fee joins entry fee in the same hold; a third payee at release |
 | Settlements | Officials become a **new payee class** — the current settlement service pays venues only |
 
-## Open questions — decide before building
+## Decisions taken (2026-08-03)
 
-| # | Question | Why it blocks |
-|---|---|---|
-| **Q1** | Official no-show: refund, rebook, or auto-downgrade to dual-captain verification? | OF6 has no stated policy; it is the most likely real failure |
-| **Q2** | Does commission-at-collection apply to the **venue fee** too? | The shipped settlement service computes venue commission **at settlement**. Two different timings for the same rupee cannot both be right — see [`settlement.service.ts`](../../../backend/src/modules/settlements/settlement.service.ts) |
-| **Q3** | Is `Match.officialType` denormalised at lock time, or read live? | An official verified *after* the match locks would otherwise retroactively change whether that match could auto-pay |
-| **Q4** | Suggested-minimum-entry-fee formula (MM2) | Stated as needed, never specified |
-| **Q5** | Who pays if the two teams' 50/50 split is reconfigured and one side refuses? | OF4 says "configurable" without saying by whom |
-| **Q6** | Does an official's fee sit inside the ₹ cap that compliance applies to a match? | [`compliance.md`](../../compliance.md) governs RMG limits |
+The open questions are now answered in code. Each was decided for the option
+that fails safest, and the reasoning is recorded so a future change is a
+deliberate one.
 
----
+| # | Question | Decision | Why |
+|---|---|---|---|
+| **Q1** | Official no-show | **Refund the fee in full and fall back to dual-captain verification.** The match keeps `officialId` and gains `officialNoShowAt`. | Rebooking mid-evening cannot be guaranteed and voiding punishes two teams standing on court. Falling back costs nobody anything — that path is already the default for matches with no official. Keeping the id is what lets a rating system know who failed to appear. |
+| **Q2** | Commission at collection or at settlement | **Timing follows when the payee is paid.** Entry-fee commission at *collection*, so the net prize pool shown pre-accept is exactly what the winner receives. Venue commission at *settlement*, because venues are paid weekly in arrears and must reconcile against completed bookings including refunds. Official commission at *payout*, so the fee quoted is the fee charged. | These are three different commissions on three different pots. The apparent collision was treating them as one rule. |
+| **Q3** | `officialType` denormalised or live | **Snapshotted at assignment** (`officialCanTriggerPayout` on the match). | An official verified *after* a match locks must not retroactively change whether that match could auto-pay — that rewrites the rules of a game already played. |
+| **Q4** | Suggested minimum entry fee | `E > (V + O) / (N · (N(1−C) − 1))`, rounded up. See `suggestedMinimumEntryFee` in [`money.service.ts`](../../../backend/src/modules/challenges/money.service.ts). | Derived from "the winner must at least cover their own costs": they receive `E·N·(1−C)` and have paid `E + (V+O)/N`. Returns 0 where profit is impossible (one team, or commission ≥ 50%) rather than a misleading number. |
+| **Q5** | Who reconfigures the 50/50 split | **Not exposed yet.** `officialFeeCreatorSharePercent` exists on the match and defaults to 50; no endpoint changes it. | Nothing in the flow needs an uneven split today, and an unused setting that moves money is a liability. |
+| **Q6** | Does the official fee sit inside the compliance cap | **Made explicit and reversible.** `ENTRY_CAP_INCLUDES_MATCH_COSTS`, default `false` — the cap limits the stake only. | Still a legal call, so the code no longer assumes one silently. The default matches the existing field name (`MAX_ENTRY_FEE_PAISE`) and preserves current behaviour; counting service fees would mean a venue raising its hourly rate silently lowers how much players may stake. Flip the flag if counsel reads the limit as "what a player can lose" — it is one line, and `calculateMatchMoney` returns `cappedAmountPaise` / `exceedsCap` so every screen agrees. |
 
 ## Status
 
