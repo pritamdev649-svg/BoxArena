@@ -22,6 +22,7 @@ import { publicId } from '../../shared/utils/ids.js';
 import { minutesFromNow } from '../../shared/utils/datetime.js';
 import { creditWinnings, refundEscrow } from '../wallet/wallet.service.js';
 import { computeElo, resultFromWinner } from './elo.service.js';
+import { payOfficial, refundOfficialFee } from '../officials/official-fee.service.js';
 import {
   normaliseToCreatorFrame,
   scoresAgree,
@@ -183,6 +184,13 @@ export async function settleVerified(
 
   await applyEloAndStats(match, winner, session);
 
+  /**
+   * The official is paid in the SAME transaction as the prize. A settled match
+   * that pays the winner but not the umpire is a support ticket the venue
+   * hears about before we do.
+   */
+  await payOfficial(match, session);
+
   if (challenge.entryFeePaise > 0) {
     if (isDraw) {
       /** A draw refunds both sides rather than splitting — friendlier at MVP (§60). */
@@ -311,6 +319,60 @@ async function raiseDispute(
 }
 
 /**
+ * A captain accepts — or contests — a result somebody else proposed.
+ *
+ * This is the branch for an official who cannot trigger payout: a team's own
+ * person officiated, so their scorecard is recorded but the money still waits
+ * on both captains (games_rule/badminton.md §6).
+ *
+ * Deliberately sport-agnostic. It never inspects the score, only who agreed to
+ * it, so cricket and football reuse it the day they get live scoring.
+ */
+export async function confirmProposedResult(input: {
+  user: IUser;
+  matchPublicId: string;
+  agree: boolean;
+}): Promise<{ settled: boolean; disputed: boolean; awaiting: Side | null }> {
+  return withTransaction(async (session) => {
+    const match = await MatchModel.findOne({ publicId: input.matchPublicId }).session(session);
+    if (!match) throw new NotFoundError('Match');
+
+    const side = await resolveSide(match, input.user, session);
+
+    if (!match.officialResultConfirmedAt || !match.finalScore) {
+      throw new ConflictError('CONFLICT', 'There is no proposed result to confirm');
+    }
+    if (match.status !== MatchStatus.PENDING_CONFIRMATION) {
+      throw new ConflictError('CONFLICT', 'This match is not awaiting confirmation');
+    }
+
+    /** Contesting is a dispute, exactly as a score mismatch would be. */
+    if (!input.agree) {
+      await raiseDispute(match, session, 'score_mismatch');
+      return { settled: false, disputed: true, awaiting: null };
+    }
+
+    if (side === 'creator') match.resultConfirmedByCreator = true;
+    else match.resultConfirmedByOpponent = true;
+
+    if (!match.resultConfirmedByCreator || !match.resultConfirmedByOpponent) {
+      await match.save({ session });
+      return {
+        settled: false,
+        disputed: false,
+        awaiting: match.resultConfirmedByCreator ? 'opponent' : 'creator',
+      };
+    }
+
+    const validation = validateScore(match.sport, match.finalScore);
+    await settleVerified(match, match.finalScore, validation.winner, validation.isDraw, session);
+    await match.save({ session });
+
+    return { settled: true, disputed: false, awaiting: null };
+  });
+}
+
+/**
  * The most common real case: one side submits and the loser simply closes the
  * app (§54). After the deadline we accept the single submission and settle,
  * rather than holding money indefinitely.
@@ -330,11 +392,19 @@ export async function autoResolveExpiredMatches(now: Date = new Date()): Promise
       const match = await MatchModel.findById(candidate._id).session(session);
       if (!match || match.status !== MatchStatus.PENDING_CONFIRMATION) return;
 
-      const submission = match.submissions[0];
-      if (!submission) return;
+      /**
+       * Two ways a match reaches here, and both must drain.
+       *
+       * The original: one captain submitted and the other never answered.
+       * The newer one: an official who cannot trigger payout recorded a
+       * result and a captain never confirmed it. Reading only `submissions[0]`
+       * left officiated matches parked forever with escrow still held.
+       */
+      const proposed = match.submissions[0]?.score ?? match.finalScore;
+      if (!proposed) return;
 
-      const validation = validateScore(match.sport, submission.score);
-      await settleVerified(match, submission.score, validation.winner, validation.isDraw, session);
+      const validation = validateScore(match.sport, proposed);
+      await settleVerified(match, proposed, validation.winner, validation.isDraw, session);
 
       match.status = MatchStatus.ADMIN_RESOLVED;
       await match.save({ session });
@@ -392,6 +462,13 @@ export async function voidStaleMatches(now: Date = new Date()): Promise<number> 
         challenge.status = ChallengeStatus.CANCELLED;
         await challenge.save({ session });
       }
+
+      /**
+       * The official was paid nothing because the match was never played, so
+       * both captains get their share back. Without this the fee sits held
+       * against a match that will never settle.
+       */
+      await refundOfficialFee(match, session);
 
       /** Voided matches never touch ELO or stats (§69). */
       match.status = MatchStatus.VOIDED;

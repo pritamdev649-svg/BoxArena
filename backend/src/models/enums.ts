@@ -164,3 +164,40 @@ export enum NotificationType {
   WITHDRAWAL_PROCESSED = 'withdrawal_processed',
   TEAM_INVITE = 'team_invite',
 }
+
+/**
+ * Where an official came from. Drives `canTriggerPayout`: only a venue's own
+ * staff or a platform-verified independent can settle a money match on their
+ * scorecard alone (games_rule/badminton.md §1, featuredoc/11 §OF5).
+ */
+export enum OfficialType {
+  VENUE_STAFF = 'venue_staff',
+  INDEPENDENT = 'independent',
+  /** A team's own person. May officiate and be paid; cannot release escrow. */
+  TEAM_ADDED = 'team_added',
+}
+
+export enum OfficialVerificationStatus {
+  UNVERIFIED = 'unverified',
+  PENDING = 'pending',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected',
+}
+
+/** Non-scoring interruptions worth keeping on the record. */
+export enum MatchEventType {
+  TIMEOUT = 'timeout',
+  INJURY = 'injury',
+  INTERRUPTION = 'interruption',
+  ENDS_CHANGED = 'ends_changed',
+}
+
+/**
+ * How a rally ended. Optional — an official who just taps the score still
+ * produces a valid match; this only enriches the statistics.
+ */
+export enum PointOutcome {
+  WINNER = 'winner',
+  UNFORCED_ERROR = 'unforced_error',
+  SERVICE_FAULT = 'service_fault',
+}

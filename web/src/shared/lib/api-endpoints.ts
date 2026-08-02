@@ -11,6 +11,23 @@ export const API_ENDPOINTS = {
     arenaReviewEligibility: (publicId: string) => `/arenas/${publicId}/reviews/eligibility`,
     uploadSign: '/uploads/sign',
 
+    // Live scoring (official's device)
+    matchLive: (publicId: string) => `/matches/${publicId}/live`,
+    matchLiveStart: (publicId: string) => `/matches/${publicId}/live/start`,
+    matchLivePoint: (publicId: string) => `/matches/${publicId}/live/point`,
+    matchLiveUndo: (publicId: string) => `/matches/${publicId}/live/undo`,
+    matchLiveEvent: (publicId: string) => `/matches/${publicId}/live/event`,
+    matchLiveConfirm: (publicId: string) => `/matches/${publicId}/live/confirm`,
+    officialMyMatches: '/officials/me/matches',
+    matchStats: (publicId: string) => `/matches/${publicId}/live/stats`,
+    matchConfirmResult: (publicId: string) => `/matches/${publicId}/result/confirm`,
+    matchOfficialFee: (publicId: string) => `/matches/${publicId}/official-fee`,
+    matchCollectOfficialFee: (publicId: string) => `/matches/${publicId}/official-fee/collect`,
+    matchProposeOfficial: (publicId: string) => `/matches/${publicId}/official`,
+    matchConfirmOfficial: (publicId: string) => `/matches/${publicId}/official/confirm`,
+    officials: '/officials',
+    officialDetail: (publicId: string) => `/officials/${publicId}`,
+
     // Booking / checkout
     bookingHold: '/bookings/hold',
     bookingConfirm: '/bookings',
@@ -30,6 +47,16 @@ export const API_ENDPOINTS = {
     ownerBookings: (limit = 8) => `/owner/bookings?limit=${limit}`,
     ownerApplication: '/owner/application',
     ownerApplicationStep: (step: number) => `/owner/application/step/${step}`,
+    ownerCourts: (arenaPublicId: string) => `/owner/arenas/${arenaPublicId}/courts`,
+    ownerCourt: (courtId: string) => `/owner/courts/${courtId}`,
+    ownerPricingRules: '/owner/pricing-rules',
+    ownerPricingRulesFor: (arenaPublicId: string) =>
+        `/owner/pricing-rules?arenaPublicId=${arenaPublicId}`,
+    ownerPricingPreview: (arenaPublicId: string) =>
+        `/owner/pricing-preview?arenaPublicId=${arenaPublicId}`,
+    ownerBlockSlots: '/owner/slots/block',
+    ownerSettlements: '/owner/settlements',
+    ownerSettlement: (publicId: string) => `/owner/settlements/${publicId}`,
 
     // Admin panel / Ops console
     adminOverview: '/admin/overview',

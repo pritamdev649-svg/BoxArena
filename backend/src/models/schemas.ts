@@ -3,7 +3,8 @@ import {
   SportType, MatchFormat, SkillLevelType, UserRole, BookingMode, BookingSource,
   ApplicationStatus, AccountStatus, SlotStatus, BookingStatus, ChallengeStatus,
   MatchStatus, TransactionType, WalletBucket, PaymentProvider, PaymentOrderStatus,
-  KycStatus, NotificationType,
+  KycStatus, NotificationType, OfficialType, OfficialVerificationStatus, MatchEventType,
+  PointOutcome,
 } from './enums.js';
 
 // =========================================================================
@@ -804,6 +805,47 @@ export interface IMatch extends Document {
   disputeId?: Types.ObjectId;
   payoutTransactionIds: Types.ObjectId[];
   eloDelta?: { teamId: Types.ObjectId; before: number; after: number }[];
+
+  // --- Officiating & live scoring (games_rule/badminton.md) ---------------
+  /** The assigned official. Only they may start and score the match. */
+  officialId?: Types.ObjectId;
+  /**
+   * Snapshotted at assignment, NOT read live from the Official.
+   *
+   * An official verified *after* this match locked must not retroactively
+   * change whether this match could auto-pay — that would rewrite the rules
+   * of a game already played (featuredoc/11 Q3).
+   */
+  officialCanTriggerPayout?: boolean;
+  officialConfirmedByCreator: boolean;
+  officialConfirmedByOpponent: boolean;
+  /** Set when the official signs off the final result. */
+  officialResultConfirmedAt?: Date;
+  /**
+   * Captain agreement with a result somebody ELSE proposed.
+   *
+   * Distinct from `submissions[]`, which is each side stating its own score.
+   * Here the result already exists — from a non-payout-triggering official —
+   * and the captains are only accepting or contesting it. Sport-agnostic on
+   * purpose: cricket and football reuse this unchanged.
+   */
+  resultConfirmedByCreator: boolean;
+  resultConfirmedByOpponent: boolean;
+  /**
+   * Official's fee, collected upfront from both captains and released once the
+   * match has a result. A cost of playing — never part of the prize pool.
+   */
+  officialFeePaise?: number;
+  /** Split between the two sides. Default 50/50 (featuredoc/11 §OF4). */
+  officialFeeCreatorSharePercent?: number;
+  officialFeeCollectedAt?: Date;
+  officialFeePaidAt?: Date;
+  officialFeeRefundedAt?: Date;
+  /** Best of 1, 3 or 5. Badminton default 3. */
+  bestOf: number;
+  startedAt?: Date;
+  endedAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -876,6 +918,22 @@ const MatchSchema = new Schema<IMatch>(
         after: { type: Number },
       },
     ],
+
+    officialId: { type: Schema.Types.ObjectId, ref: 'Official', index: true },
+    officialCanTriggerPayout: { type: Boolean },
+    officialConfirmedByCreator: { type: Boolean, default: false },
+    officialConfirmedByOpponent: { type: Boolean, default: false },
+    officialResultConfirmedAt: { type: Date },
+    resultConfirmedByCreator: { type: Boolean, default: false },
+    resultConfirmedByOpponent: { type: Boolean, default: false },
+    officialFeePaise: { type: Number, min: 0 },
+    officialFeeCreatorSharePercent: { type: Number, min: 0, max: 100, default: 50 },
+    officialFeeCollectedAt: { type: Date },
+    officialFeePaidAt: { type: Date },
+    officialFeeRefundedAt: { type: Date },
+    bestOf: { type: Number, default: 3, min: 1, max: 5 },
+    startedAt: { type: Date },
+    endedAt: { type: Date },
   },
   { timestamps: true },
 );
@@ -1494,3 +1552,188 @@ SettlementSchema.index({ arenaId: 1, periodStart: 1, periodEnd: 1 }, { unique: t
 
 export const SettlementModel = model<ISettlement>('Settlement', SettlementSchema);
 
+
+// =========================================================================
+// 21. OFFICIALS  (featuredoc/11 §OF5)
+// =========================================================================
+
+export interface IOfficial extends Document {
+  publicId: string;
+  /** The person. An official is a ROLE a user holds, not a separate identity. */
+  userId: Types.ObjectId;
+  type: OfficialType;
+  displayName: string;
+  sports: SportType[];
+  experienceYears?: number;
+  bio?: string;
+  /** Per match, integer paise. The official sets this, never the platform. */
+  pricePerMatchPaise: number;
+  verificationStatus: OfficialVerificationStatus;
+  idDocumentUrl?: string;
+  verifiedByAdminId?: Types.ObjectId;
+  verifiedAt?: Date;
+  /** Set for venue_staff — the venue that vouches for them. */
+  linkedArenaId?: Types.ObjectId;
+  rating: { average: number; count: number };
+  matchesOfficiated: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const OfficialSchema = new Schema<IOfficial>(
+  {
+    publicId: { type: String, required: true, unique: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    type: { type: String, enum: Object.values(OfficialType), required: true, index: true },
+    displayName: { type: String, required: true, trim: true, maxlength: 60 },
+    sports: [{ type: String, enum: Object.values(SportType), required: true }],
+    experienceYears: { type: Number, min: 0, max: 60 },
+    bio: { type: String, maxlength: 500 },
+    pricePerMatchPaise: { type: Number, required: true, min: 0 },
+    verificationStatus: {
+      type: String,
+      enum: Object.values(OfficialVerificationStatus),
+      default: OfficialVerificationStatus.UNVERIFIED,
+      index: true,
+    },
+    idDocumentUrl: { type: String },
+    verifiedByAdminId: { type: Schema.Types.ObjectId, ref: 'User' },
+    verifiedAt: { type: Date },
+    linkedArenaId: { type: Schema.Types.ObjectId, ref: 'Arena', index: true },
+    rating: {
+      average: { type: Number, default: 0, min: 0, max: 5 },
+      count: { type: Number, default: 0, min: 0 },
+    },
+    matchesOfficiated: { type: Number, default: 0, min: 0 },
+    isActive: { type: Boolean, default: true, index: true },
+  },
+  { timestamps: true },
+);
+
+/** One official profile per user per type — a venue's staffer may also freelance. */
+OfficialSchema.index({ userId: 1, type: 1 }, { unique: true });
+OfficialSchema.index({ sports: 1, isActive: 1, verificationStatus: 1 });
+
+export const OfficialModel = model<IOfficial>('Official', OfficialSchema);
+
+// =========================================================================
+// 22. LIVE SCORING — POINT / SET / EVENT LOGS
+//     (games_rule/badminton.md §4)
+// =========================================================================
+
+/**
+ * One rally. **Append-only** — a mistake is corrected by appending a row with
+ * `isCorrection`, never by deleting or editing one. The live score is derived
+ * by replaying this log through the rules engine, so the log IS the score;
+ * anything stored elsewhere is a cache of it.
+ *
+ * That is what makes a disputed result replayable rather than a bare
+ * "21-15, trust us" (§5).
+ */
+export interface IMatchPoint extends Document {
+  matchId: Types.ObjectId;
+  gameNumber: number;
+  /** Sequential within the game, starting at 1. */
+  pointNumber: number;
+  scoringSide: 'creator' | 'opponent';
+  /** Score AFTER this rally, creator frame — denormalised for cheap replay display. */
+  scoreAfter: { creator: number; opponent: number };
+  /** Who served this rally, i.e. who won the previous one. */
+  servingSide: 'creator' | 'opponent';
+  recordedByUserId: Types.ObjectId;
+  /** How the rally ended, when the official bothered to say. */
+  outcome?: PointOutcome;
+  /** Which player the outcome is attributed to — doubles needs this. */
+  attributedToUserId?: Types.ObjectId;
+  /** True when this row exists to undo an earlier mistake. */
+  isCorrection: boolean;
+  /** Client-supplied. Makes a retried tap on bad signal a no-op, not a phantom point. */
+  idempotencyKey: string;
+  createdAt: Date;
+}
+
+const MatchPointSchema = new Schema<IMatchPoint>(
+  {
+    matchId: { type: Schema.Types.ObjectId, ref: 'Match', required: true, index: true },
+    gameNumber: { type: Number, required: true, min: 1 },
+    pointNumber: { type: Number, required: true, min: 1 },
+    scoringSide: { type: String, enum: ['creator', 'opponent'], required: true },
+    scoreAfter: {
+      creator: { type: Number, required: true, min: 0 },
+      opponent: { type: Number, required: true, min: 0 },
+    },
+    servingSide: { type: String, enum: ['creator', 'opponent'], required: true },
+    recordedByUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    outcome: { type: String, enum: Object.values(PointOutcome) },
+    attributedToUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+    isCorrection: { type: Boolean, default: false },
+    idempotencyKey: { type: String, required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+
+/** Replay order. */
+MatchPointSchema.index({ matchId: 1, createdAt: 1 });
+/** The retry guard — a repeated tap cannot become a second rally. */
+MatchPointSchema.index({ matchId: 1, idempotencyKey: 1 }, { unique: true });
+
+export const MatchPointModel = model<IMatchPoint>('MatchPoint', MatchPointSchema);
+
+/** A completed game, derived from the point log when the game closes. */
+export interface IMatchSet extends Document {
+  matchId: Types.ObjectId;
+  gameNumber: number;
+  creatorPoints: number;
+  opponentPoints: number;
+  winnerSide: 'creator' | 'opponent';
+  startedAt: Date;
+  endedAt: Date;
+  durationSeconds: number;
+}
+
+const MatchSetSchema = new Schema<IMatchSet>(
+  {
+    matchId: { type: Schema.Types.ObjectId, ref: 'Match', required: true, index: true },
+    gameNumber: { type: Number, required: true, min: 1 },
+    creatorPoints: { type: Number, required: true, min: 0 },
+    opponentPoints: { type: Number, required: true, min: 0 },
+    winnerSide: { type: String, enum: ['creator', 'opponent'], required: true },
+    startedAt: { type: Date, required: true },
+    endedAt: { type: Date, required: true },
+    durationSeconds: { type: Number, required: true, min: 0 },
+  },
+  { timestamps: true },
+);
+
+MatchSetSchema.index({ matchId: 1, gameNumber: 1 }, { unique: true });
+
+export const MatchSetModel = model<IMatchSet>('MatchSet', MatchSetSchema);
+
+/** Timeouts, injuries, interruptions and ends changes. */
+export interface IMatchEvent extends Document {
+  matchId: Types.ObjectId;
+  gameNumber: number;
+  eventType: MatchEventType;
+  /** Absent for events that belong to the match, not a side (e.g. ends changed). */
+  side?: 'creator' | 'opponent';
+  note?: string;
+  recordedByUserId: Types.ObjectId;
+  createdAt: Date;
+}
+
+const MatchEventSchema = new Schema<IMatchEvent>(
+  {
+    matchId: { type: Schema.Types.ObjectId, ref: 'Match', required: true, index: true },
+    gameNumber: { type: Number, required: true, min: 1 },
+    eventType: { type: String, enum: Object.values(MatchEventType), required: true },
+    side: { type: String, enum: ['creator', 'opponent'] },
+    note: { type: String, maxlength: 200 },
+    recordedByUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+
+MatchEventSchema.index({ matchId: 1, createdAt: 1 });
+
+export const MatchEventModel = model<IMatchEvent>('MatchEvent', MatchEventSchema);

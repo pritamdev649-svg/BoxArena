@@ -177,6 +177,35 @@ export const en = {
     reviewNeedsBooking: 'Only players who have played here can rate this venue.',
   },
 
+  /** The officials pitch, mirroring the venue-partner page. */
+  officialsLanding: {
+    metaTitle: 'Officiate matches in Lucknow',
+    metaDescription:
+      'Umpire badminton, box cricket and turf football. Set your own fee per match and get paid when the match settles.',
+    eyebrow: 'For officials',
+    title: 'Officiate. Get paid per match.',
+    description:
+      'Set your own fee. Players book you, we hold the money, and it lands in your wallet the moment the match settles.',
+    cta: 'Register as an official',
+    rulesTitle: 'What verification changes',
+    rulesBody:
+      'Anyone can officiate and be paid. Only a venue’s own staff and platform-verified independents can release prize money on their scorecard alone — everyone else records the result and both captains confirm it. Submitting ID moves you into the verified queue.',
+    points: {
+      earn: {
+        title: 'You set the price',
+        body: 'Your fee per match is yours to set. Both teams split it, collected before the match starts so nobody officiates on a promise.',
+      },
+      verified: {
+        title: 'Verified officials settle matches',
+        body: 'Once ops verify your ID, the result you record pays the winner automatically — no waiting on two captains who have already gone home.',
+      },
+      control: {
+        title: 'Only the matches you accept',
+        body: 'Captains pick an official and both must agree. Nothing is assigned to you without your listing being chosen.',
+      },
+    },
+  },
+
   leaderboard: {
     metaTitle: 'Lucknow city table',
     metaDescription: 'Badminton, box cricket and turf football rankings across Lucknow.',
@@ -282,6 +311,9 @@ export const en = {
     openChallenges: 'Open challenges',
     cityTable: 'City table',
     listVenue: 'List your venue',
+    officiate: 'Officiate',
+    becomeOfficial: 'Why officiate',
+    officialSignUp: 'Register as an official',
     payouts: 'How payouts work',
     terms: 'Terms',
     privacy: 'Privacy',

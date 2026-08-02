@@ -7,6 +7,7 @@ import {
   voidStaleMatches,
 } from '../modules/matches/match.service.js';
 import { materialiseAllArenaSlots } from '../modules/arenas/slot.service.js';
+import { runSettlementSweep } from '../modules/settlements/settlement.service.js';
 
 /**
  * Background jobs. Runs as a SEPARATE process from the API — a slow sweep must
@@ -56,6 +57,19 @@ const JOBS: Job[] = [
     name: 'materialiseSlots',
     intervalMs: 60 * 60_000,
     run: () => materialiseAllArenaSlots(),
+  },
+  /**
+   * Prepares each week's venue payout once the period is past T+3.
+   *
+   * Hourly, not weekly: the sweep only builds periods that have matured, and
+   * an hourly idempotent pass means a worker that was down over the weekend
+   * catches up on its own rather than skipping a venue's payment entirely.
+   * It only ever writes DRAFT settlements — money leaves on an ops approval.
+   */
+  {
+    name: 'settlementSweep',
+    intervalMs: 60 * 60_000,
+    run: () => runSettlementSweep(),
   },
 ];
 

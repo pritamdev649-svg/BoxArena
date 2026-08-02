@@ -9,6 +9,7 @@ import {
   pricingPreviewSchema,
 } from '../arenas/pricing.validators.js';
 import * as management from './arena-management.service.js';
+import * as settlements from '../settlements/settlement.service.js';
 import * as service from './partner.service.js';
 
 export const partnerRoutes = Router();
@@ -225,6 +226,26 @@ partnerRoutes.post('/slots/block', validate({ body: blockSchema }), async (req, 
   }
 });
 
+/**
+ * Settlements are money, so staff are excluded the same way they are from the
+ * staff roster and pricing (§117).
+ */
+partnerRoutes.get('/settlements', requireRole(UserRole.ARENA_OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    ok(res, await settlements.listOwnerSettlements(currentUser(req)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+partnerRoutes.get('/settlements/:publicId', requireRole(UserRole.ARENA_OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    ok(res, await settlements.getOwnerSettlement(currentUser(req), String(req.params.publicId)));
+  } catch (err) {
+    next(err);
+  }
+});
+
 /** Owner only — staff must never see the staff roster or money (§117). */
 partnerRoutes.get('/staff', requireRole(UserRole.ARENA_OWNER, UserRole.SUPER_ADMIN), async (req, res, next) => {
   try {
@@ -317,6 +338,26 @@ partnerRoutes.post(
           arenaPublicId: req.body.arenaPublicId,
           rules: req.body.rules,
           replaceExisting: req.body.replaceExisting,
+        }),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+partnerRoutes.get(
+  '/pricing-rules',
+  ownerOnly,
+  validate({ query: pricingPreviewSchema }),
+  async (req, res, next) => {
+    try {
+      const query = validatedQuery<z.infer<typeof pricingPreviewSchema>>(req);
+      ok(
+        res,
+        await management.listPricingRules({
+          user: currentUser(req),
+          arenaPublicId: query.arenaPublicId,
         }),
       );
     } catch (err) {

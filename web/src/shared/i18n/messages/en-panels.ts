@@ -8,6 +8,200 @@
  */
 
 export const panels = {
+  /** Officials marketplace (featuredoc/11). */
+  officials: {
+    metaTitle: 'Become an official',
+    title: 'Officiate matches',
+    description:
+      'Set your own price per match. Verified officials can settle prize money on their scorecard alone.',
+    nameLabel: 'Name players will see',
+    namePlaceholder: 'R. Sharma',
+    sportsLabel: 'Sports you officiate',
+    priceLabel: 'Your fee per match (₹)',
+    experienceLabel: 'Years of experience',
+    register: 'Register as an official',
+    registering: 'Registering…',
+    registered: 'You are listed.',
+    registeredHint:
+      'Captains can now find and book you. Submit ID verification to settle prize money without both captains confirming.',
+    verificationNote:
+      'You can officiate and be paid straight away. Until ops verify your ID, a result you record still needs both captains to agree before prize money moves.',
+    failed: 'That did not go through. Try again.',
+
+    confirmMetaTitle: 'Confirm the result',
+    confirmHeading: 'The official recorded',
+    confirmBody:
+      'Prize money is released once both captains agree. If this is wrong, say so — it opens a dispute for ops to review.',
+    agree: 'I agree',
+    disagree: 'This is wrong',
+    sending: 'Sending…',
+    settled: 'Both captains agreed. The winner has been paid.',
+    awaitingOther: 'Recorded. Waiting for the other captain.',
+    disputed: 'Dispute raised. Ops will review the point-by-point record.',
+    disputeHint: 'Every rally was logged, so a dispute is reviewed against the full record.',
+    notFinished: 'This match has not finished yet.',
+  },
+
+  /** The official's live scoring screen (games_rule/badminton.md §3). */
+  scoring: {
+    metaTitle: 'Score match',
+    startMatch: 'Start match',
+    starting: 'Starting…',
+    startHint: 'Both teams and you are at the venue. Starting locks the scoreboard to this device.',
+    serving: 'Serving',
+    gameNumber: { one: 'Game {count}', other: 'Game {count}' },
+    gameShort: { one: 'G{count}', other: 'G{count}' },
+    undo: 'Undo',
+    timeout: 'Timeout',
+    elapsed: 'Elapsed',
+    changeEnds: 'Change ends',
+    callServiceOver: 'Service over.',
+    callDeuce: 'Deuce.',
+    court: 'Court',
+    stats: 'Statistics',
+    statPoints: 'Points won',
+    statOnServe: 'Points won on serve',
+    statStreak: 'Longest streak',
+    statWinners: 'Winners',
+    statErrors: 'Unforced errors',
+    statFaults: 'Service faults',
+    statTotal: 'Total points played',
+    statCorrections: 'Corrections made',
+    outcomeWinner: 'Winner',
+    outcomeError: 'Unforced error',
+    outcomeFault: 'Service fault',
+    outcomeHint: 'Tag the rally (optional)',
+    matchComplete: 'Match complete',
+    confirmResult: 'Confirm final result',
+    confirming: 'Confirming…',
+    settled: 'Result confirmed. The winner has been paid.',
+    awaitingCaptains: 'Result recorded. Both captains must agree before the prize is released.',
+    notYourMatch: 'Only the assigned official can confirm this result.',
+    failed: 'That did not go through. Try again.',
+    sideA: 'Team A',
+    sideB: 'Team B',
+  },
+
+  partnerSettlements: {
+    metaTitle: 'Settlements',
+    title: 'Settlements',
+    description:
+      'Every payment we send you, and exactly which bookings make it up. Weekly, T+3 after the slot date.',
+    back: 'All settlements',
+    emptyTitle: 'No settlements yet',
+    emptyBody:
+      'Payouts are prepared weekly, three days after the last slot in the period. Your first one appears once a full week of online bookings has been played.',
+
+    gross: 'Gross online bookings',
+    commission: 'Platform commission',
+    refunds: 'Refunds to players',
+    collectedAtVenue: 'Collected by you at the venue',
+    netPayable: 'Net payable',
+    paidOn: 'Paid on',
+    download: 'Download statement',
+
+    bookingCount: { one: '{count} booking', other: '{count} bookings' },
+    noBookings: 'No bookings in this period.',
+    date: 'Date',
+    time: 'Time',
+    reference: 'Booking',
+    value: 'Value',
+
+    heldCount: {
+      one: '{count} booking held back for an open dispute',
+      other: '{count} bookings held back for an open dispute',
+    },
+    heldHint:
+      'These are excluded from this payment. They move into a later settlement once the dispute is resolved.',
+
+    status_draft: 'Draft',
+    status_approved: 'Approved',
+    status_processing: 'Processing',
+    status_paid: 'Paid',
+    status_failed: 'Failed',
+  },
+
+  partnerCourts: {
+    metaTitle: 'Courts & pricing',
+    title: 'Courts & pricing',
+    description: 'What you sell and what it costs. Price changes apply to future free slots only.',
+    noVenueTitle: 'No venue yet',
+    noVenueBody: 'Courts and pricing appear once your venue is approved.',
+
+    courtsHeading: 'Courts',
+    courtsBody:
+      'One court per game that can run at the same time. The base price applies whenever no band covers the hour.',
+    noCourts: 'No courts yet. Add the first one below.',
+    addCourt: 'Add court',
+    nameLabel: 'Court name',
+    namePlaceholder: 'Turf A',
+    sportLabel: 'Sport',
+    surfaceLabel: 'Surface',
+    surfacePlaceholder: 'Astro turf',
+    priceLabel: 'Base price per hour (₹)',
+    basePrice: 'base / hour',
+    indoor: 'Indoor',
+    retire: 'Retire',
+    reactivate: 'Reactivate',
+    retired: 'Retired',
+    cancel: 'Cancel',
+    saving: 'Saving…',
+    saved: 'Saved.',
+
+    bandsHeading: 'Price bands',
+    bandsBody:
+      'Charge more at peak hours. Where bands overlap the most specific one wins: a holiday rate beats a weekend rate, which beats a weekday rate.',
+    noBands: 'No bands yet — every hour is charged at the court base price.',
+    addBand: 'Add band',
+    saveBands: 'Save bands',
+    removeBand: 'Remove band',
+    appliesTo: 'Applies to',
+    appliesTo_weekday: 'Weekdays',
+    appliesTo_weekend: 'Weekends',
+    appliesTo_holiday: 'Holidays',
+    appliesTo_specific_date: 'One date',
+    appliesTo_custom_days: 'Chosen days',
+    onDate: 'Date',
+    from: 'From',
+    to: 'To',
+    rupeesPerHour: '₹ / hour',
+    court: 'Court',
+    allCourts: 'All courts',
+    repriced: {
+      one: 'Saved. {count} upcoming free slot was repriced.',
+      other: 'Saved. {count} upcoming free slots were repriced.',
+    },
+
+    previewHeading: 'Next seven days',
+    previewBody:
+      'Priced by the same resolver that stamps real slots, so this is exactly what players will be charged.',
+    noPreview: 'Add a court to see the weekly price grid.',
+    hour: 'Hour',
+    previewLegend: 'Highlighted hours cost more than this court’s cheapest hour.',
+    hoursLive: 'Hours come from your operating hours.',
+    hoursLink: 'Change them in settings',
+
+    blockHeading: 'Block hours',
+    blockBody:
+      'Take hours off sale for rain, maintenance or a private event. Existing bookings are never cancelled automatically.',
+    blockFrom: 'From',
+    blockTo: 'Until',
+    reasonLabel: 'Reason',
+    reasonPlaceholder: 'Resurfacing',
+    blockSlots: 'Block hours',
+    blocking: 'Blocking…',
+    blocked: {
+      one: '{count} free hour taken off sale.',
+      other: '{count} free hours taken off sale.',
+    },
+    stillBooked: {
+      one: '{count} booking already exists in that window',
+      other: '{count} bookings already exist in that window',
+    },
+    stillBookedHint:
+      'These were left untouched. Cancel them from Bookings if the venue really cannot host them — cancelling refunds the players in full.',
+  },
+
   panel: {
     signedInAs: 'Signed in as',
     signOut: 'Sign out',

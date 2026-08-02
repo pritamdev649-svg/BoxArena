@@ -2,8 +2,12 @@
 
 Live status of every task in [`tasks.md`](./tasks.md). One row per task ID, same order.
 
-**Last audited:** 2026-08-01
-**Overall: 23.5 / 47 tasks — ~50%**
+**Last full audit:** 2026-08-01 · **Partially updated:** 2026-08-03
+**Overall: 26.5 / 47 tasks — ~56%**
+
+> The 2026-08-02/03 updates are **not** re-audits. They revise only the rows changed by
+> that work — F2.4, F2.5, F2.6, F4.4, F4.5, B9, then OF1/OF3/OF5/OF7 and the new LS block.
+> Every other row still carries its 2026-08-01 assessment.
 
 Per-MVP-feature breakdown: [`mvp/featuredoc/`](./mvp/featuredoc/README.md).
 
@@ -24,15 +28,17 @@ Per-MVP-feature breakdown: [`mvp/featuredoc/`](./mvp/featuredoc/README.md).
 |---|---|---|---|
 | 0 — Foundation | 4 | 2.0 | 50% |
 | 1 — Design system & shell | 5 | 3.0 | 60% |
-| 2 — Player web: discovery & booking | 7 | 3.0 | 43% |
+| 2 — Player web: discovery & booking | 7 | 5.5 | 79% |
 | 3 — Player web: compete | 6 | 1.0 | 17% |
-| 4 — Partner & admin web | 8 | 4.5 | 56% |
+| 4 — Partner & admin web | 8 | 5.0 | 63% |
 | 5 — Backend | 9 | 6.5 | **72%** |
 | 6 — Integration | 3 | 0.5 | 17% |
 | 7 — Flutter | 5 | 3.0 | 60% |
-| **Total** | **47** | **23.5** | **50%** |
+| **Total** | **47** | **26.5** | **56%** |
+| *Pending (unscheduled)* | *18* | *5.5* | *31%* |
 
-Scoring: ✅ = 1, 🟡 = 0.5, ⬜/🔴 = 0.
+Scoring: ✅ = 1, 🟡 = 0.5, ⬜/🔴 = 0. The pending row (OF1–OF7, MM1–MM5, LS1–LS6) is
+**excluded** from the 47-task total — it is specified, not scheduled.
 
 ### Codebase size
 
@@ -79,16 +85,16 @@ Scoring: ✅ = 1, 🟡 = 0.5, ⬜/🔴 = 0.
 | F1.4 | App shell & routing | 🟡 | Routes, header, footer ✅. Role gating via [`panel-auth.ts`](../web/src/shared/lib/panel-auth.ts) in layouts — **no `middleware.ts`**, so the done-when redirect is unproven. |
 | F1.5 | State primitives | 🔴 | No skeleton, designed-empty, error-boundary, or offline-banner components anywhere. |
 
-## Phase 2 — Player Web: Discovery & Booking — 3.0 / 7
+## Phase 2 — Player Web: Discovery & Booking — 5.5 / 7
 
 | ID | Task | Status | Notes |
 |---|---|---|---|
 | F2.1 | Landing page | ✅ | [`page.tsx`](../web/src/app/page.tsx), 160 lines. `[verify]` Lighthouse ≥ 90. |
 | F2.2 | Arena discovery | 🟡 | [`arenas/page.tsx`](../web/src/app/arenas/page.tsx) is only 69 lines + [`arena-card.tsx`](../web/src/features/arenas/components/arena-card.tsx). No map view, no location-denied fallback. |
 | F2.3 | Arena detail | ✅ | [`arenas/[slug]/page.tsx`](../web/src/app/arenas/[slug]/page.tsx), 161 lines. |
-| F2.4 | Slot grid + hold ⚠️ | 🟡 | [`slot-grid.tsx`](../web/src/features/arenas/components/slot-grid.tsx) exists. `[verify]` live countdown, `PRICE_CHANGED` handling, contiguity guard, 44px targets. |
-| F2.5 | Checkout | 🔴 | No route. **Blocks all revenue.** |
-| F2.6 | Bookings & receipt | 🔴 | No route. |
+| F2.4 | Slot grid + hold ⚠️ | ✅ | [`slot-grid.tsx`](../web/src/features/arenas/components/slot-grid.tsx). Continue now takes the hold and routes to checkout; `PRICE_CHANGED` surfaced, contiguity guard, 44px targets, live countdown on checkout. Past/lead-time hours are returned as `past` by the API and rendered unbookable — they were previously offered as `available` and always failed on hold. Hold verified live 2026-08-02. |
+| F2.5 | Checkout | ✅ | [`checkout/page.tsx`](../web/src/app/checkout/page.tsx) + [`checkout-panel.tsx`](../web/src/features/booking/components/checkout-panel.tsx). Hold countdown, wallet shortfall guard, pay-at-venue deposit. Idempotent confirm verified live — a replayed key returns the original booking. |
+| F2.6 | Bookings & receipt | ✅ | [`bookings/[publicId]/page.tsx`](../web/src/app/bookings/[publicId]/page.tsx) — check-in code, money breakdown. `[verify]` cancel-from-receipt is not built. |
 | F2.7 | Wallet | 🔴 | No route (backend wallet API is ready). |
 
 ## Phase 3 — Player Web: Compete — 1.0 / 6
@@ -102,18 +108,18 @@ Scoring: ✅ = 1, 🟡 = 0.5, ⬜/🔴 = 0.
 | F3.5 | Leaderboards & profiles | 🟡 | [`leaderboard/page.tsx`](../web/src/app/leaderboard/page.tsx) ✅; no player profile page. |
 | F3.6 | Notifications | 🔴 | No route (backend has 3 notification endpoints ready). |
 
-## Phase 4 — Partner & Admin Web — 4.5 / 8
+## Phase 4 — Partner & Admin Web — 5.0 / 8
 
 | ID | Task | Status | Notes |
 |---|---|---|---|
 | F4.1 | Partner landing + application | ✅ | [`partner/page.tsx`](../web/src/app/partner/page.tsx) + [`partner/apply`](../web/src/app/partner/apply/page.tsx) + [`application-form.tsx`](../web/src/features/admin/components/application-form.tsx). |
 | F4.2 | Onboarding wizard ⚠️ | 🔴 | **None of the 7 steps exist.** No resumability, no map-pin drag, no live price grid. |
-| F4.3 | Partner dashboard | ✅ | [`partner/dashboard`](../web/src/app/partner/dashboard/page.tsx). |
-| F4.4 | Partner operations | 🟡 | [`bookings`](../web/src/app/partner/bookings/page.tsx) + [`booking-table.tsx`](../web/src/features/partner/components/booking-table.tsx) ✅, [`pricing`](../web/src/app/partner/pricing/page.tsx) ✅. [`courts`](../web/src/app/partner/courts/page.tsx) is a ⬜ stub. No slot blocking, no 2-tap offline entry, no check-in/no-show. |
-| F4.5 | Staff & settlements | 🔴 | [`settlements`](../web/src/app/partner/settlements/page.tsx) is a ⬜ stub; no staff accounts. |
-| F5.1 | Admin: application queue | ✅ | [`applications`](../web/src/app/admin/applications/page.tsx) + [detail](../web/src/app/admin/applications/[publicId]/page.tsx) + [`verification-checklist.tsx`](../web/src/features/admin/components/verification-checklist.tsx). |
-| F5.2 | Admin: disputes ⚠️ | ✅ | [`admin/disputes`](../web/src/app/admin/disputes/page.tsx), 83 lines. `[verify]` SLA countdown + mandatory audit note. |
-| F5.3 | Admin: money & ops | 🔴 | [`users`](../web/src/app/admin/users/page.tsx) and [`audit`](../web/src/app/admin/audit/page.tsx) are ⬜ stubs; no withdrawal queue, settlement approval, reconciliation, or config editor. |
+| F4.3 | Partner dashboard | ✅ | [`partner/dashboard`](../web/src/app/partner/%28panel%29/dashboard/page.tsx). |
+| F4.4 | Partner operations | 🟡 | [`bookings`](../web/src/app/partner/%28panel%29/bookings/page.tsx) + [`booking-table.tsx`](../web/src/features/partner/components/booking-table.tsx) ✅, [`pricing`](../web/src/app/partner/pricing/page.tsx) ✅. [`courts`](../web/src/app/partner/%28panel%29/courts/page.tsx) **now built** — courts CRUD, price bands, live weekly preview, slot blocking with an affected-bookings warning. Band → repricing verified live. **Still missing: 2-tap offline entry, check-in/no-show UI** (both have endpoints). |
+| F4.5 | Staff & settlements | 🟡 | [`settlements`](../web/src/app/partner/%28panel%29/settlements/page.tsx) + [detail](../web/src/app/partner/%28panel%29/settlements/%5BpublicId%5D/page.tsx) **now built** — payout history, per-booking breakdown, held-for-dispute list, CSV statement. Backed by a new settlements module + hourly `settlementSweep` job. **No staff accounts.** |
+| F5.1 | Admin: application queue | ✅ | [`applications`](../web/src/app/admin/%28panel%29/applications/page.tsx) + [detail](../web/src/app/admin/%28panel%29/applications/%5BpublicId%5D/page.tsx) + [`verification-checklist.tsx`](../web/src/features/admin/components/verification-checklist.tsx). |
+| F5.2 | Admin: disputes ⚠️ | ✅ | [`admin/disputes`](../web/src/app/admin/%28panel%29/disputes/page.tsx), 83 lines. `[verify]` SLA countdown + mandatory audit note. |
+| F5.3 | Admin: money & ops | 🔴 | [`users`](../web/src/app/admin/%28panel%29/users/page.tsx) and [`audit`](../web/src/app/admin/%28panel%29/audit/page.tsx) are ⬜ stubs; no withdrawal queue, settlement approval, reconciliation, or config editor. |
 
 ## Phase 5 — Backend — 8.5 / 9 🟢
 
@@ -130,7 +136,7 @@ Per-feature breakdown: [`mvp/featuredoc/`](./mvp/featuredoc/README.md).
 | B6 | Wallet + Razorpay + webhooks | 🟡 | [`wallet.integrity.test.ts`](../backend/src/modules/wallet/wallet.integrity.test.ts), [`payment.idempotency.test.ts`](../backend/src/modules/payments/payment.idempotency.test.ts), raw-body webhook route, top-up order + verify. **Withdrawals missing** (`POST /wallet/withdraw`, `GET /wallet/withdrawals`). |
 | B7 | Teams, challenges, escrow | 🟡 | teams 7/8 (no `PATCH /teams/:id`); challenges **3/6** — no detail, cancel/forfeit, or `/mine`. |
 | B8 | Scoring, disputes, ELO, crons ⚠️ | 🟡 | [`score-validator.ts`](../backend/src/modules/matches/score-validator.ts) + tests, [`elo.service.ts`](../backend/src/modules/matches/elo.service.ts), 4 interval jobs in [`worker.ts`](../backend/src/jobs/worker.ts): `releaseExpiredHolds` (60s), `expireUnmatchedChallenges` (5m), `autoResolveMatches` (15m), `voidStaleMatches` (1h). Matches **3/6** — **players cannot raise a dispute**, no walkover, no 10-min edit. |
-| B9 | Notifications, partner, admin, settlements | 🟡 | notifications 3/3, admin 22/22, partner **18/20** — court, hours, amenities, and pricing management now live. **No dedicated settlements module.** |
+| B9 | Notifications, partner, admin, settlements | 🟡 | notifications 3/3, admin 22/22, partner **21/20+** — court, hours, amenities and pricing management live, plus `GET /owner/pricing-rules`. **Settlements module now exists** ([`settlement.service.ts`](../backend/src/modules/settlements/settlement.service.ts)): owner list + detail, weekly rollup, `settlementSweep` job. Payout formula is **provisional — needs sign-off** (see Q2 in [11](./mvp/featuredoc/11-officials-marketplace.md)). **No staff create/delete.** |
 
 Endpoints per module: admin 22 · partner 18 · users 9 · arenas 7 · auth 7 · teams 7 · booking 5 · challenges 3 · matches 3 · notifications 3 · payments 3 · wallet 2 · geo 2 · uploads 1 = **92**.
 
@@ -158,9 +164,48 @@ window forward hourly — without it, every live arena silently ran out of booka
 | I1.2 | E2E | 🔴 | No Playwright. None of the five critical flows covered. |
 | I1.3 | Hardening | 🔴 | No load test, IDOR sweep, rate-limit check, or bundle budget. |
 
+## Pending — specified, not scheduled
+
+Outside the 47-task MVP count above. Recorded so it is tracked rather than remembered.
+
+| ID | Task | Status | Notes |
+|---|---|---|---|
+| OF1 | Official registration & onboarding — profile, price, availability, ID verification, rating | 🟡 | [`official.service.ts`](../backend/src/modules/officials/official.service.ts) + 8 routes. Register, browse, own profiles, ops verification. **No availability calendar, no rating writes yet.** |
+| OF2 | Venue onboarding: list own officials | 🔴 | Extends `arena_onboarding.md` |
+| OF3 | Booking flow: pick official, **both captains confirm** before lock | 🟡 | Backend done: `POST /matches/:id/official` + `/official/confirm`. Proposing a different official resets both confirmations. **No UI.** |
+| OF4 | Official fee collected upfront, escrowed, released on completion | 🔴 | Default 50/50 split between teams |
+| OF5 | Data model: `Official`, `Match.officialId` + per-team confirmation flags | ✅ | `Official` model; `Match` gains `officialId`, `officialCanTriggerPayout` (snapshotted — Q3 answered), both confirm flags, `bestOf`, `startedAt`/`endedAt`. |
+| OF6 | Edge cases: no agreement, official no-show, no coverage at venue | 🔴 | **Q1 undecided** — no-show policy |
+| OF7 | Multi-phase brackets: per-match official, per-set `Match.phases[]` | 🟡 | Per-set records exist as `MatchSet`, per-rally as `MatchPoint`. **No bracket/multi-round assignment.** |
+| MM1 | Live cost/prize calculation engine at challenge creation | 🔴 | Server-computed, never client-trusted |
+| MM2 | Creator warning when winner profit ≤ ₹0 + suggested minimum entry fee | 🔴 | **Q4 undecided** — floor formula |
+| MM3 | Challenge details screen with win/lose outcome table + mandatory confirm checkbox | 🔴 | Shown to opponent *before* accepting |
+| MM4 | `Challenge` fee/commission fields + computed pool fields | 🔴 | |
+| MM5 | Escrow trigger: lock on both teams paying, release on 3 conditions | 🔴 | **Q2 undecided** — collides with shipped settlement timing |
+
+### Badminton live scoring (games_rule/badminton.md)
+
+| ID | Task | Status | Notes |
+|---|---|---|---|
+| LS1 | Pure rally state machine — 21 / win-by-2 / cap-30, serve, ends changes, best-of-N | ✅ | [`badminton-engine.ts`](../backend/src/modules/matches/badminton-engine.ts), **23 unit tests**. No I/O — deuce to 24-22, 29-29 cap, decider swap at 11 all covered. |
+| LS2 | Append-only point log + set/event logs, score derived by replay | ✅ | `MatchPoint` / `MatchSet` / `MatchEvent`. Undo appends a correction; the mistake stays on the record. |
+| LS3 | Scoring API — start, point, undo, timeout/event, confirm, read | ✅ | 7 routes on `/matches/:publicId/live/*`, idempotent per rally, **16 integration tests**. |
+| LS4 | Live push over the existing WebSocket | 🔴 | Not started. `socket.ts` exists and is authenticated; nothing broadcasts yet. |
+| LS5 | Official's scoring screen (two tap zones, undo, clock) | 🔴 | No UI on web or Flutter. |
+| LS6 | Both-captain confirmation when the official cannot trigger payout | 🟡 | Backend records the result and parks the match; **captains have no route to confirm it yet**. |
+
+**Blocked on six open questions** listed at the foot of the feature doc. Q2 is the sharp one:
+the spec says commission is deducted **at collection**, while the settlement service shipped
+on 2026-08-02 computes venue commission **at settlement**. Both cannot be right for the same
+rupee.
+
+---
+
 ## Phase 7 — Flutter — 3.0 / 5
 
-9 routes: `/`, `/login`, `/register`, `/discover`, `/challenges`, `/wallet`, `/profile`, `/score-entry`, `/create-challenge`.
+Architecture reference: [`flutter_architecture.md`](./flutter_architecture.md).
+
+12 routes: `/`, `/login`, `/register`, `/discover`, `/challenges`, `/wallet`, `/profile`, `/score-entry`, `/create-challenge`.
 
 | ID | Task | Status | Notes |
 |---|---|---|---|
@@ -172,13 +217,13 @@ window forward hourly — without it, every live arena silently ran out of booka
 
 ### 🔴 Flutter blocker
 
-**9 screens still read from [`seed_data.dart`](../flutter_app/lib/core/mock/seed_data.dart)**, and
-[`api_routes.dart`](../flutter_app/lib/core/constants/api_routes.dart) declares only **6 routes**
-against a backend exposing 74. The app is a mock-driven prototype with a live backend it never calls.
+**8 files still read from [`seed_data.dart`](../flutter_app/lib/core/mock/seed_data.dart)** — all of
+booking and matchmaking. Auth, wallet, profile and the new live scoring feature are wired to the
+real API, so the app is no longer wholly mock-driven, but **discovery and matchmaking still are**.
 
-Files on mock data: `auth_service.dart`, `arena_detail_screen.dart`, `arena_info_screen.dart`,
-`arena_list_screen.dart`, `challenge_detail_screen.dart`, `challenges_screen.dart`,
-`create_challenge_screen.dart`, `challenges_provider.dart`, `wallet_screen.dart`.
+Files on mock data: `arenas_provider.dart`, `arena_list_screen.dart`, `arena_detail_screen.dart`,
+`arena_info_screen.dart`, `challenges_provider.dart`, `challenges_screen.dart`,
+`challenge_detail_screen.dart`, `create_challenge_screen.dart`.
 
 ---
 
@@ -199,8 +244,10 @@ The DoD in `tasks.md` applies to *every* task. Three items fail repo-wide:
 1. **Wire Flutter to the live backend.** Expand `api_routes.dart` to the real surface, replace
    `seed_data` reads with API calls. Highest leverage: unblocks M3–M5 at once and validates 74
    already-built endpoints.
-2. **Close the web money loop: F2.5 → F2.6 → F2.7** (checkout → bookings/receipt → wallet).
-   The backend for all three is done. Until these ship there is no revenue path on web.
+2. **Finish the web money loop: F2.7 wallet.** Checkout (F2.5) and the receipt (F2.6) shipped
+   2026-08-02, so a player can book and pay from wallet balance — but there is still **no way
+   to top that balance up on web**, which caps the whole flow at whatever seed credit exists.
+   The backend top-up + Razorpay verify endpoints are already built.
 3. **F1.5 state primitives** — small, and every remaining task's DoD depends on it.
 4. **F3.3 score entry** — the awkward-state task `tasks.md` explicitly says to build early;
    the server-side validator already exists to mirror.

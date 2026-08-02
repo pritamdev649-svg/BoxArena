@@ -30,6 +30,16 @@ day-one product is **free bookings, teams, scoring, and leaderboards**.
 
 **Backend totals: 92 of ~105 contract endpoints (~88%).**
 
+### Post-MVP — specified, not scheduled
+
+| # | Feature | PRD | Backend | Web | Flutter | Status |
+|---|---|---|---|---|---|---|
+| [11](./11-officials-marketplace.md) | Officials Marketplace & Match Money Calculation | — | 🔴 0/~14 | 🔴 | 🔴 | **Pending** |
+
+Doc 11 is **outside the MVP scope above** and outside the 47-task count in
+[`progress.md`](../../progress.md). Spec captured 2026-08-02; six open questions must be
+answered before it can be estimated.
+
 ---
 
 ## The four MVP blockers

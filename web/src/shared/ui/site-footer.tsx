@@ -23,6 +23,13 @@ const COLUMNS = [
     ],
   },
   {
+    headingKey: 'footer.officiate',
+    links: [
+      { href: '/officials', labelKey: 'footer.becomeOfficial' },
+      { href: '/officials/register', labelKey: 'footer.officialSignUp' },
+    ],
+  },
+  {
     headingKey: 'footer.legal',
     links: [
       { href: '/legal/terms', labelKey: 'footer.terms' },
@@ -42,7 +49,7 @@ export function SiteFooter() {
   return (
     <footer className="border-line-subtle mt-auto border-t">
       <div className="mx-auto max-w-5xl px-6 py-12">
-        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           <div>
             <Logo />
             <p className="text-ink-muted mt-3 text-sm">

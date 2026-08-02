@@ -129,3 +129,24 @@ export function sendToUserWithAck(
     });
   });
 }
+
+/**
+ * Fire-and-forget broadcast to several users.
+ *
+ * Deliberately unacked, unlike `sendToUserWithAck`: a live score frame is
+ * superseded by the next one within seconds, so retrying a dropped frame is
+ * worse than letting it go — the client would render a stale score after a
+ * fresher one had already arrived.
+ */
+export function broadcastToUsers(userIds: string[], type: string, data: unknown): void {
+  const payload = JSON.stringify({ type, data });
+
+  for (const userId of new Set(userIds)) {
+    const sockets = connections.get(userId);
+    if (!sockets) continue;
+
+    for (const socket of sockets) {
+      if (socket.readyState === WebSocket.OPEN) socket.send(payload);
+    }
+  }
+}

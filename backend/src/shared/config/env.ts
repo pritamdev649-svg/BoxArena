@@ -73,6 +73,8 @@ const schema = z.object({
   SLOT_HOLD_DURATION_SECONDS: int(300),
   SLOT_HOLD_EXTENDED_SECONDS: int(900),
   MIN_BOOKING_LEAD_MINUTES: int(30),
+  /** Platform's cut of an official's fee, taken at payout (featuredoc/11 §OF4). */
+  OFFICIAL_COMMISSION_PERCENT: int(10),
   SLOT_MATERIALISATION_DAYS: int(30),
   SCORE_CONFIRMATION_WINDOW_MINUTES: int(1440),
   MATCH_VOID_AFTER_HOURS: int(72),

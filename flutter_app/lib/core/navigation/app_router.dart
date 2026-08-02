@@ -16,6 +16,10 @@ import 'package:app/core/widgets/app_loader.dart';
 import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/splash/presentation/splash_screen.dart';
 import 'package:app/main.dart';
+import 'package:app/features/scoring/presentation/live_scoring_screen.dart';
+import 'package:app/features/scoring/presentation/official_matches_screen.dart';
+import 'package:app/features/officials/presentation/register_official_screen.dart';
+import 'package:app/features/officials/presentation/confirm_result_screen.dart';
 
 // Notifier class that listens to Profile state shifts and notifies GoRouter
 class RouterNotifier extends ChangeNotifier {
@@ -122,6 +126,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/score/:matchId',
+        builder: (context, state) =>
+            LiveScoringScreen(matchId: state.pathParameters['matchId']!),
+      ),
+      GoRoute(
+        path: '/officials/register',
+        builder: (context, state) => const RegisterOfficialScreen(),
+      ),
+      GoRoute(
+        path: '/matches/:matchId/confirm',
+        builder: (context, state) =>
+            ConfirmResultScreen(matchId: state.pathParameters['matchId']!),
+      ),
+      GoRoute(
+        path: '/official/matches',
+        builder: (context, state) => const OfficialMatchesScreen(),
       ),
       GoRoute(
         path: '/score-entry',

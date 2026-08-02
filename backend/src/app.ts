@@ -22,6 +22,7 @@ import { notificationRoutes } from './modules/notifications/notification.routes.
 import { paymentRoutes, webhookRoutes } from './modules/payments/payment.routes.js';
 import { userRoutes } from './modules/users/user.routes.js';
 import { geoRoutes } from './modules/geo/geo.routes.js';
+import { officialRoutes } from './modules/officials/official.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -97,6 +98,7 @@ export function createApp(): Express {
   v1.use('/notifications', notificationRoutes);
   v1.use('/users', userRoutes);
   v1.use('/geo', geoRoutes);
+  v1.use('/officials', officialRoutes);
   v1.use('/wallet', paymentRoutes);
   v1.use('/webhooks', webhookRoutes);
   app.use('/api/v1', v1);

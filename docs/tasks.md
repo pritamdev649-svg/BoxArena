@@ -247,6 +247,54 @@ Load test 100 concurrent bookings, IDOR sweep, rate-limit verification, Lighthou
 
 ---
 
+# Pending — Officials Marketplace & Match Money (unscheduled)
+
+Specified 2026-08-02, **not in the phase plan above** and not counted in the 47-task total.
+Full spec: [`mvp/featuredoc/11-officials-marketplace.md`](./mvp/featuredoc/11-officials-marketplace.md).
+
+Officials are the third settlement path beside dual-captain agreement and admin dispute
+resolution — a neutral scorecard that releases escrow on its own. The money engine ships with
+it because an official is a **cost of playing**, and the prize-pool maths cannot be specified
+without knowing who charges what.
+
+| ID | Task | Done when |
+|---|---|---|
+| **OF1** | Official registration: profile, sport, price/match, availability, ID verification, rating | A verified independent official appears in search for their sport and slot |
+| **OF2** | Venue lists its own officials during onboarding, bundled or priced separately | A venue with zero officials is flagged ineligible for paid tournaments |
+| **OF3** | Official selection at challenge creation + **both-captain confirmation** before lock | A unilateral pick never locks; the second captain's confirm is required |
+| **OF4** | Official fee escrowed upfront on confirmation, released on match completion | Default 50/50 split collected from both teams before the match is live |
+| **OF5** | `Official` model + `Match.officialId` / per-team confirm flags / `officialType` | `canTriggerPayout` is true **only** for venue_staff and verified independents |
+| **OF6** | Edge cases: no agreement → fallback, official no-show, no venue coverage | **Blocked on Q1** — no-show policy is undecided |
+| **OF7** | Per-match official assignment across a bracket; `Match.phases[]` per-set entry | A 3-set match records 3 phase rows, each confirmed and timestamped |
+| **MM1** | Live cost/prize engine, recalculating as venue/official/entry change | Every figure is computed server-side; a tampered client payload changes nothing |
+| **MM2** | Soft warning + suggested minimum when winner profit ≤ ₹0 | **Blocked on Q4** — floor formula unspecified |
+| **MM3** | Pre-accept challenge screen: cost table, prize breakdown, win/lose outcomes, confirm checkbox | Accept is disabled until the "I understand I will pay ₹X" box is ticked |
+| **MM4** | Challenge fee + commission-rate fields; computed pool fields server-side | |
+| **MM5** | Escrow: lock on both teams paying; release on agreement, verified scorecard, or window expiry | **Blocked on Q2** — commission-at-collection vs. the shipped settlement timing |
+
+**Do not start OF6, MM2 or MM5 before their open questions are answered** — each encodes a
+money or refund policy that is cheap to decide now and expensive to change once live.
+
+## Badminton live scoring (games_rule/badminton.md)
+
+The reference implementation for every sport: granular log → aggregated set/match record →
+confirmation → escrow trigger. Box cricket swaps rallies for balls against the same shape.
+
+| ID | Task | Done when |
+|---|---|---|
+| **LS1** | Pure rally state machine: 21 / win-by-2 / cap-30, serve, ends changes, best-of-N | A 21-20 set win is unrepresentable, not merely rejected |
+| **LS2** | Append-only point log; score derived by replaying it | Undo appends a correction and the mistaken rally is still on the record |
+| **LS3** | Scoring API: start, point, undo, event, confirm, read | A retried tap on bad signal does not create a phantom point |
+| **LS4** | Live push over the existing authenticated WebSocket | Spectators see the score without touching the source of truth |
+| **LS5** | Official's scoring screen — two tap zones, undo, timeout, clock | Usable one-handed, outdoors, at night; 44px floor |
+| **LS6** | Both-captain confirmation when the official cannot trigger payout | Escrow moves only on both confirms or dispute-window expiry |
+
+**The reconciliation rule, non-negotiable:** the result derived from the point log is handed
+to the existing `validateBadminton` before settling. If the two ever disagree the settle is
+refused — two paths to a result that can differ is the exact trust hole officials exist to close.
+
+---
+
 ## Definition of Done (every task)
 
 ```

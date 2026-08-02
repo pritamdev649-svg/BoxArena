@@ -281,6 +281,23 @@ export async function setPricingRules(input: {
   return { ruleCount: docs.length, slotsRepriced: await repriceAvailableSlots(arenaId) };
 }
 
+/**
+ * The bands currently in force, so the panel can show what it is about to
+ * replace. Without this the owner edits blind and `replaceExisting` silently
+ * discards rules they never saw.
+ */
+export async function listPricingRules(input: {
+  user: IUser;
+  arenaPublicId: string;
+}) {
+  assertOwner(input.user);
+  const arena = await resolveArena(input.user, input.arenaPublicId);
+
+  return PricingRuleModel.find({ arenaId: arena._id, isActive: true })
+    .sort({ priority: -1, startTime: 1 })
+    .lean();
+}
+
 async function repriceAvailableSlots(arenaId: Types.ObjectId): Promise<number> {
   const [courts, context, slots] = await Promise.all([
     CourtModel.find({ arenaId, isActive: true }).lean<ICourt[]>(),
